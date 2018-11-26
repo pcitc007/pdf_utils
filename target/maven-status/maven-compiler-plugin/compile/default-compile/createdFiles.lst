@@ -1,0 +1,6 @@
+com\pcitc\htmltopdf\entity\PageSizeEnum.class
+com\pcitc\htmltopdf\utils\MyFontProviders.class
+com\pcitc\htmltopdf\utils\PDFBuilder.class
+com\pcitc\htmltopdf\utils\HtmlToPDF.class
+com\pcitc\htmltopdf\entity\ResultData.class
+com\pcitc\htmltopdf\utils\CommonUtils.class
