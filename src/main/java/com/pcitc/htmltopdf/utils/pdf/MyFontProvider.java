@@ -1,4 +1,4 @@
-package com.pcitc.htmltopdf.utils;
+package com.pcitc.htmltopdf.utils.pdf;
 
 import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.Font;
@@ -10,11 +10,11 @@ import com.itextpdf.tool.xml.XMLWorkerFontProvider;
  * @author baitao
  * @date 2018/11/20 13:36
  */
-public class MyFontProviders extends XMLWorkerFontProvider {
+public class MyFontProvider extends XMLWorkerFontProvider {
 
   private String ttf; // 字体文件完整路径
 
-  public MyFontProviders(String ttf) {
+  public MyFontProvider(String ttf) {
     super();
     this.ttf = ttf;
   }

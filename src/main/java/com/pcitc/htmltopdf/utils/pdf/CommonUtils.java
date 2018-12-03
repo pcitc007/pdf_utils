@@ -1,4 +1,4 @@
-package com.pcitc.htmltopdf.utils;
+package com.pcitc.htmltopdf.utils.pdf;
 
 import java.util.UUID;
 
