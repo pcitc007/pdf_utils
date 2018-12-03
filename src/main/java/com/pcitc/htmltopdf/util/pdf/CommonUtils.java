@@ -1,12 +1,15 @@
+//
+// Source code recreated from a .class file by IntelliJ IDEA
+// (powered by Fernflower decompiler)
+//
+
 package com.pcitc.htmltopdf.util.pdf;
 
 import java.util.UUID;
 
-/**
- * @author baitao
- * @date 2018/11/21 11:05
- */
 public class CommonUtils {
+	public CommonUtils() {
+	}
 
 	public static String getUUID() {
 		return UUID.randomUUID().toString().replaceAll("-", "");
