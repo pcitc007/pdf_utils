@@ -123,8 +123,8 @@ public class PDFBuilder extends PdfPageEventHelper {
 			}
 
 			content.endText();
-		} catch (DocumentException | IOException var7) {
-			var7.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 
 	}

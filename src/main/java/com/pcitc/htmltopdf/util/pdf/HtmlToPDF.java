@@ -22,7 +22,6 @@ import com.itextpdf.tool.xml.pipeline.end.PdfWriterPipeline;
 import com.itextpdf.tool.xml.pipeline.html.HtmlPipeline;
 import com.itextpdf.tool.xml.pipeline.html.HtmlPipelineContext;
 import com.pcitc.htmltopdf.entity.PageSizeEnum;
-import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -32,7 +31,6 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -83,7 +81,7 @@ public class HtmlToPDF {
 			rectangle.rotate();
 		}
 
-		if (StringUtils.isEmpty(ttfPath)) {
+		if (StringUtils.isBlank(ttfPath)) {
 			ttfPath = "./src/main/resources/static/WeiRuanYaHei-1.ttf";
 		}
 
@@ -91,7 +89,7 @@ public class HtmlToPDF {
 		pdfBuilder.imgName = imgName;
 		pdfBuilder.imgX = imgX;
 		pdfBuilder.imgY = imgY;
-		if (StringUtils.isNotEmpty(calc) && calc.equalsIgnoreCase("calc")) {
+		if (StringUtils.isNotBlank(calc) && calc.equalsIgnoreCase("calc")) {
 			tableToPdf(htmlStr, rootPath, pdfName, ttfPath, rectangle, pdfBuilder);
 		} else {
 			htmlStrToPdf(htmlStr, rootPath, pdfName, ttfPath, rectangle, pdfBuilder);
@@ -102,58 +100,24 @@ public class HtmlToPDF {
 
 	private static boolean htmlFileToPdf(String txt, String path, String pdfName, String ttf, Rectangle rectangle, PDFBuilder pdfBuilder) {
 		StringBuilder inputStr = new StringBuilder();
-
+		FileReader reader = null;
 		try {
-			FileReader reader = new FileReader(txt);
-			Throwable var8 = null;
-
-			try {
-				BufferedReader br = new BufferedReader(reader);
-				Throwable var10 = null;
-
-				try {
-					String temStr;
-					try {
-						while((temStr = br.readLine()) != null) {
-							inputStr.append(temStr);
-						}
-					} catch (Throwable var35) {
-						var10 = var35;
-						throw var35;
-					}
-				} finally {
-					if (br != null) {
-						if (var10 != null) {
-							try {
-								br.close();
-							} catch (Throwable var34) {
-								var10.addSuppressed(var34);
-							}
-						} else {
-							br.close();
-						}
-					}
-
-				}
-			} catch (Throwable var37) {
-				var8 = var37;
-				throw var37;
-			} finally {
-				if (reader != null) {
-					if (var8 != null) {
-						try {
-							reader.close();
-						} catch (Throwable var33) {
-							var8.addSuppressed(var33);
-						}
-					} else {
-						reader.close();
-					}
-				}
-
+			reader = new FileReader(txt);
+			BufferedReader br = new BufferedReader(reader);
+			String temStr;
+			while((temStr = br.readLine()) != null) {
+				inputStr.append(temStr);
 			}
-		} catch (IOException var39) {
-			logger.error(var39.getMessage());
+		} catch (Exception e) {
+			logger.error(e.getMessage());
+		} finally {
+			if(reader != null) {
+				try {
+					reader.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
 		}
 
 		return htmlStrToPdf(inputStr.toString(), path, pdfName, ttf, rectangle, pdfBuilder);
@@ -167,7 +131,7 @@ public class HtmlToPDF {
 			pdfWriter.setPageEvent(pdfBuilder);
 			document.open();
 			XMLWorkerHelper worker = XMLWorkerHelper.getInstance();
-			worker.parseXHtml(pdfWriter, document, new ByteArrayInputStream(htmlStr.getBytes(StandardCharsets.UTF_8)), (InputStream)null, new MyFontProviders(ttfPath));
+			worker.parseXHtml(pdfWriter, document, new ByteArrayInputStream(htmlStr.getBytes(Charset.forName("UTF-8"))), (InputStream)null, new MyFontProviders(ttfPath));
 			document.close();
 			return true;
 		} catch (Exception var9) {
@@ -248,7 +212,7 @@ public class HtmlToPDF {
 			//宽度比例、局左中右解析
 			int columnNum = tbody.getElementsByTag("tr").get(0).select("td").size();
 			columnsWidth = new float[columnNum];
-			columnAlign = new HashMap<>();
+			columnAlign = new HashMap<Integer, String>();
 			Elements widthTds = tbody.getElementsByTag("tr").get(0).select("td");
 			for(int i = 0; i < widthTds.size(); ++i) {
 				columnsWidth[i] = Float.parseFloat(widthTds.get(i).attr("width"));
@@ -265,18 +229,18 @@ public class HtmlToPDF {
 			footHeight += footTable.calculateHeights();
 
 			if (null != thead) {
-				thead.getElementsByTag("tr").iterator().forEachRemaining((element) -> {
+				for (Element element : thead.getElementsByTag("tr")) {
 					Font tempFont = getDefaultFont(ttfPath);
 					if (tableHeadStrong) {
 						tempFont.setStyle(1);
 					}
 					putTrInTable(element, headTable, tempFont);
-				});
+				}
 			}
 
 			//获取xml解析对象
 			XMLParser p = selfParseXHtml(pdfWriter, pdf, new MyFontProviders(ttfPath));
-			p.parse(new ByteArrayInputStream(tableBeforeHtml.getBytes(StandardCharsets.UTF_8)), Charset.forName("UTF-8"));
+			p.parse(new ByteArrayInputStream(tableBeforeHtml.getBytes(Charset.forName("UTF-8"))), Charset.forName("UTF-8"));
 			pdf.add(headTable);
 			Elements tbodyTrs = tbody.getElementsByTag("tr");
 			PdfPTable tempTable = newPdfPTable(columnNum, pdf);
@@ -305,7 +269,7 @@ public class HtmlToPDF {
 					//如果不是最后一页，新建一页、放入头部、放入超出的那行
 					if (i != tbodyTrs.size() - 1) {
 						pdf.newPage();
-						p.parse(new ByteArrayInputStream(tableBeforeHtml.getBytes(StandardCharsets.UTF_8)), Charset.forName("UTF-8"));
+						p.parse(new ByteArrayInputStream(tableBeforeHtml.getBytes(Charset.forName("UTF-8"))), Charset.forName("UTF-8"));
 						pdf.add(headTable);
 
 						pdf.add(tempTable);
@@ -328,7 +292,7 @@ public class HtmlToPDF {
 				pdf.add(footTable);
 			}
 
-			p.parse(new ByteArrayInputStream(tableAfterHtml.getBytes(StandardCharsets.UTF_8)), Charset.forName("UTF-8"));
+			p.parse(new ByteArrayInputStream(tableAfterHtml.getBytes(Charset.forName("UTF-8"))), Charset.forName("UTF-8"));
 			pdf.close();
 		} catch (Exception var40) {
 			var40.printStackTrace();
@@ -344,21 +308,16 @@ public class HtmlToPDF {
 		PdfPCell pdfPCell = new PdfPCell(new Paragraph(txt, font));
 		String align = columnAlign.get(index);
 		if (null != align) {
-			switch(align) {
-				case "left":
-					pdfPCell.setHorizontalAlignment(com.itextpdf.text.Element.ALIGN_LEFT);
-					break;
-				case "center":
-					pdfPCell.setHorizontalAlignment(com.itextpdf.text.Element.ALIGN_CENTER);
-					break;
-				case "right":
-					pdfPCell.setHorizontalAlignment(com.itextpdf.text.Element.ALIGN_RIGHT);
-					break;
-				default:
-					pdfPCell.setHorizontalAlignment(com.itextpdf.text.Element.ALIGN_LEFT);
+			if ("left".equals(align)) {
+				pdfPCell.setHorizontalAlignment(com.itextpdf.text.Element.ALIGN_LEFT);
+			} else if ("center".equals(align)) {
+				pdfPCell.setHorizontalAlignment(com.itextpdf.text.Element.ALIGN_CENTER);
+			} else if ("right".equals(align)) {
+				pdfPCell.setHorizontalAlignment(com.itextpdf.text.Element.ALIGN_RIGHT);
+			} else {
+				pdfPCell.setHorizontalAlignment(com.itextpdf.text.Element.ALIGN_LEFT);
 			}
 		}
-
 		return pdfPCell;
 	}
 
@@ -376,18 +335,18 @@ public class HtmlToPDF {
 
 	private static void editFootTable(Elements trs, PdfPTable footTable, Map<Integer, BigDecimal> resultMap, String sign, Font font) {
 		if (resultMap.size() != 0) {
-			trs.iterator().forEachRemaining((element) -> {
+			for (Element element : trs) {
 				Elements ktds = element.getElementsByTag("td");
 				int k = 0;
-				for(Element element1 : ktds) {
+				for (Element element1 : ktds) {
 					if (element1.text().contains(sign) && resultMap.containsKey(k)) {
 						footTable.addCell(createPdfPCell(element1.text().replace(sign, resultMap.get(k).toString()), k, font));
 					} else {
 						footTable.addCell(createPdfPCell(element1.text(), k, font));
 					}
 				}
+			}
 
-			});
 		}
 	}
 
@@ -400,12 +359,12 @@ public class HtmlToPDF {
 				}
 
 				Elements tbodyTrs = tbody.getElementsByTag("tr");
-				tbodyTrs.iterator().forEachRemaining(element -> {
+				for (Element element : tbodyTrs) {
 					Elements tds = element.select("td");
 					for(int j = 0; j < tds.size(); ++j) {
 						commonCalc(sumResultMap, tds, j);
 					}
-				});
+				}
 			} catch (Exception var8) {
 				logger.error(var8.getMessage());
 			}
@@ -415,11 +374,11 @@ public class HtmlToPDF {
 
 	//获得需要计算的列
 	private static Map<Integer, BigDecimal> getFootSign(Elements trs, String sign) {
-		Map<Integer, BigDecimal> resultMap = new HashMap<>();
+		Map<Integer, BigDecimal> resultMap = new HashMap<Integer, BigDecimal>();
 		if (null == trs) {
 			return resultMap;
 		} else {
-			trs.iterator().forEachRemaining( element -> {
+			for (Element element : trs) {
 				Elements tds = element.getElementsByTag("td");
 				for(int j = 0; j < tds.size(); ++j) {
 					Element td = tds.get(j);
@@ -427,7 +386,7 @@ public class HtmlToPDF {
 						resultMap.put(j, BigDecimal.ZERO);
 					}
 				}
-			});
+			}
 
 			return resultMap;
 		}
@@ -469,9 +428,9 @@ public class HtmlToPDF {
 	}
 
 	private static void putTrInTable(Element tr, PdfPTable table, Font font) {
-		tr.select("td").iterator().forEachRemaining((element) -> {
+		for (Element element : tr.select("td")) {
 			table.addCell(new Paragraph(element.text(), font));
-		});
+		}
 	}
 
 	private static PdfPTable newPdfPTable(int columnNum, Document pdf) throws DocumentException {

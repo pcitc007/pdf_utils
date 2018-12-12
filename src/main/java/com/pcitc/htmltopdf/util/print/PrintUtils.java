@@ -2,7 +2,7 @@ package com.pcitc.htmltopdf.util.print;
 
 import com.pcitc.htmltopdf.dto.PrintTempDto;
 import com.pcitc.htmltopdf.entity.PrintTempEntity;
-import org.apache.commons.lang3.StringUtils;
+import com.pcitc.htmltopdf.util.pdf.StringUtils;
 import org.springframework.jdbc.core.RowMapper;
 
 import javax.servlet.http.HttpServletRequest;
