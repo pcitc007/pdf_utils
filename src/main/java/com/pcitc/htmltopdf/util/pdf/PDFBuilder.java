@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.net.URI;
 
 public class PDFBuilder extends PdfPageEventHelper {
-	private static Logger LOGGER = LoggerFactory.getLogger(PDFBuilder.class);
 	public String header = "";
 	public int presentFontSize = 12;
 	public Rectangle pageSize;
@@ -22,6 +21,7 @@ public class PDFBuilder extends PdfPageEventHelper {
 	public String imgY;
 	public int distance;
 	public String position;
+	public String pageNumberFlag;
 
 	public PDFBuilder() {
 		this.pageSize = PageSize.A4;
@@ -32,6 +32,7 @@ public class PDFBuilder extends PdfPageEventHelper {
 		this.imgY = null;
 		this.distance = 50;
 		this.position = "rb";
+		this.pageNumberFlag = "true";
 	}
 
 	public PDFBuilder(String yeMei, int presentFontSize, Rectangle pageSize) {
@@ -43,6 +44,7 @@ public class PDFBuilder extends PdfPageEventHelper {
 		this.imgY = null;
 		this.distance = 50;
 		this.position = "rb";
+		this.pageNumberFlag = "true";
 		this.header = yeMei;
 		this.presentFontSize = presentFontSize;
 		this.pageSize = pageSize;
@@ -61,7 +63,9 @@ public class PDFBuilder extends PdfPageEventHelper {
 	}
 
 	public void onEndPage(PdfWriter writer, Document document) {
-		this.addPage(writer, document);
+		if("true".equalsIgnoreCase(this.pageNumberFlag)) {
+			this.addPage(writer, document);
+		}
 		if (null != this.imgName && !"".equals(this.imgName)) {
 			this.addImg(writer, document);
 		}
@@ -130,11 +134,13 @@ public class PDFBuilder extends PdfPageEventHelper {
 	}
 
 	public void onCloseDocument(PdfWriter writer, Document document) {
-		this.total.beginText();
-		this.total.setFontAndSize(this.bf, (float)this.presentFontSize);
-		String foot2 = " " + writer.getPageNumber() + " 页";
-		this.total.showText(foot2);
-		this.total.endText();
-		this.total.closePath();
+		if("true".equalsIgnoreCase(this.pageNumberFlag)) {
+			this.total.beginText();
+			this.total.setFontAndSize(this.bf, (float)this.presentFontSize);
+			String foot2 = " " + writer.getPageNumber() + " 页";
+			this.total.showText(foot2);
+			this.total.endText();
+			this.total.closePath();
+		}
 	}
 }

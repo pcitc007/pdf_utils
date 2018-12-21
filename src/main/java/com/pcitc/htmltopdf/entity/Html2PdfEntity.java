@@ -19,6 +19,8 @@ public class Html2PdfEntity {
 		return htmlStr;
 	}
 
+	public Html2PdfEntity() {
+	}
 
 	public Html2PdfEntity(String htmlStr, String original, String pageSize, String imgName, String imgX, String imgY, String direction) {
 		this.htmlStr = htmlStr;

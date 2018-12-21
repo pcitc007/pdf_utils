@@ -71,7 +71,7 @@ public class FileServiceImpl implements FileService {
         }
         String tempHtmlStr = html2PdfEntity.getHtmlStr();
 
-        return HtmlToPDF.htmlFileToPdf(tempHtmlStr, html2PdfEntity.getOriginal(), html2PdfEntity.getPageSize(), html2PdfEntity.getDirection(), html2PdfEntity.getImgName(), html2PdfEntity.getImgX(), html2PdfEntity.getImgY(), pdfPath, ttfPath);
+        return HtmlToPDF.htmlStrToPdf(tempHtmlStr, html2PdfEntity.getOriginal(), html2PdfEntity.getPageSize(), html2PdfEntity.getDirection(), html2PdfEntity.getImgName(), html2PdfEntity.getImgX(), html2PdfEntity.getImgY(), pdfPath, ttfPath);
 
     }
 

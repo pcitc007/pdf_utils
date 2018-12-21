@@ -39,6 +39,7 @@ public class PrintTemplateManagerImpl implements PrintTemplateManager {
 	}
 
 	private static final String FORMAT_TIME = "yyyy-MM-dd HH:mm:ss.SSS";
+	private static final String FORMAT_TIME2 = "yyyy年MM月dd日 HH:mm:ss.SSS";
 
 	/** sql查询结果类型   */
 	// Map	

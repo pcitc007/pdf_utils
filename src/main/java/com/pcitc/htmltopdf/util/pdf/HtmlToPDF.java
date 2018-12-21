@@ -5,6 +5,8 @@
 
 package com.pcitc.htmltopdf.util.pdf;
 
+import com.itextpdf.html2pdf.ConverterProperties;
+import com.itextpdf.html2pdf.HtmlConverter;
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
@@ -25,24 +27,28 @@ import com.pcitc.htmltopdf.entity.PageSizeEnum;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class HtmlToPDF {
-	private static final Logger logger = LoggerFactory.getLogger(HtmlToPDF.class);
+//	private static final Logger logger = LoggerFactory.getLogger(HtmlToPDF.class);
+	private static final Logger logger = new com.pcitc.htmltopdf.util.pdf.Logger();
 	private static final String THEAD = "thead";
 	private static final String TFOOT = "tfoot";
 	private static final String TBODY = "tbody";
 	private static final String PAGE = "###";
 	private static final String SUM = "##";
+//	private static final String COMMON_STYLE = "<style type=\"text/css\"> * {font-size: 12px;} table {border-color=\"#000000\"; width: 100%;border-collapse: collapse;border: 1px solid black;border-style: solid;border-width: 2px 1px 1px 2px}  td, th {padding: 5px; border-style: solid;border-width: 0 1px 1px 0;}</style>";
+	private static final String COMMON_STYLE = "<style type=\"text/css\">" +
+			"* {font-size: 13px;}  table {width: 100%;border-collapse: collapse;border: 1px solid black;border-style: solid;border-width: 2px 1px 1px 2px;}  td, th {padding: 7px 0px;border: 0px solid black;border-style: solid;border-width: 0 1px 1px 0;}  table#thead, table#thead td, table#thead th, table#tfoot, table#tfoot td, table#tfoot th {border: 0;}" +
+			"</style>";
 	private static float[] columnsWidth;
 	private static Map<Integer, String> columnAlign;
 	private static int fontSize = 8;
@@ -57,8 +63,8 @@ public class HtmlToPDF {
 	 * @param rootPath
 	 * @return
 	 */
-	public static String htmlFileToPdf(String htmlStr, String calc, String pageSize, String direction, String rootPath, String ttfPath) {
-		return htmlFileToPdf(htmlStr, calc, pageSize, direction, null, null, null, rootPath, ttfPath);
+	public static String htmlStrToPdf(String htmlStr, String calc, String pageSize, String direction, String rootPath, String ttfPath) {
+		return htmlStrToPdf(htmlStr, calc, pageSize, direction, null, null, null, rootPath, ttfPath);
 	}
 
 	/**
@@ -74,7 +80,7 @@ public class HtmlToPDF {
 	 * @param ttfPath
 	 * @return
 	 */
-	public static String htmlFileToPdf(String htmlStr, String calc, String pageSize, String direction, String imgName, String imgX, String imgY, String rootPath, String ttfPath) {
+	public static String htmlStrToPdf(String htmlStr, String calc, String pageSize, String direction, String imgName, String imgX, String imgY, String rootPath, String ttfPath) {
 		String pdfName = CommonUtils.getUUID() + ".pdf";
 		Rectangle rectangle = PageSizeEnum.getPageSize(pageSize);
 		if ("hx".equalsIgnoreCase(direction)) {
@@ -97,30 +103,62 @@ public class HtmlToPDF {
 
 		return pdfName;
 	}
-
-	private static boolean htmlFileToPdf(String txt, String path, String pdfName, String ttf, Rectangle rectangle, PDFBuilder pdfBuilder) {
-		StringBuilder inputStr = new StringBuilder();
-		FileReader reader = null;
-		try {
-			reader = new FileReader(txt);
-			BufferedReader br = new BufferedReader(reader);
-			String temStr;
-			while((temStr = br.readLine()) != null) {
-				inputStr.append(temStr);
-			}
-		} catch (Exception e) {
-			logger.error(e.getMessage());
-		} finally {
-			if(reader != null) {
-				try {
-					reader.close();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
+	/**
+	 * 多种业务的打印，
+	 * 每个html三个table，头、体、尾
+	 */
+	public static String htmlStrToPdf(List<String> htmlStrList, String pageSize, String direction, String pageNumberFlag, String imgName, String imgX, String imgY, String pdfPath, String ttfPath) {
+		logger.info("pdfPaht:" + pdfPath);
+		logger.info("ttfPath:" + ttfPath);
+		String pdfName = CommonUtils.getUUID() + ".pdf";
+		logger.info("pdfName:" + pdfName);
+		Rectangle rectangle = PageSizeEnum.getPageSize(pageSize);
+		if ("hx".equalsIgnoreCase(direction)) {
+			rectangle = rectangle.rotate();
 		}
 
-		return htmlStrToPdf(inputStr.toString(), path, pdfName, ttf, rectangle, pdfBuilder);
+		if (StringUtils.isBlank(ttfPath)) {
+			ttfPath = "./src/main/resources/static/simfang.ttf";
+		}
+		if (StringUtils.isBlank(pdfPath)) {
+			pdfPath = "./src/main/resources/pdf";
+		}
+
+		PDFBuilder pdfBuilder = new PDFBuilder();
+		pdfBuilder.pageNumberFlag = pageNumberFlag;
+		pdfBuilder.imgName = imgName;
+		pdfBuilder.imgX = imgX;
+		pdfBuilder.imgY = imgY;
+		htmlToPdfListHtml(htmlStrList, pdfPath, pdfName, ttfPath, rectangle, pdfBuilder);
+		return pdfName;
+	}
+
+	private static boolean htmlToPdfListHtml(List<String> htmlStrList, String pdfPath, String pdfName, String ttfPath, Rectangle rectangle, PDFBuilder pdfBuilder) {
+		try {
+			Document document = new Document(rectangle);
+			document.setMargins(18, 18, 54, 36);
+			PdfWriter pdfWriter = PdfWriter.getInstance(document, new FileOutputStream(pdfPath + File.separator + pdfName));
+			pdfWriter.setPageEvent(pdfBuilder);
+			document.open();
+
+			XMLWorkerHelper worker = XMLWorkerHelper.getInstance();
+
+			for (int i = 0; i < htmlStrList.size(); i++) {
+				String htmlStr = htmlStrList.get(i);
+				htmlStr = htmlStrPreProcess(htmlStr);
+				
+				worker.parseXHtml(pdfWriter, document, new ByteArrayInputStream(htmlStr.getBytes()), (InputStream)null, new MyFontProviders(ttfPath));
+				if((i+1) < htmlStrList.size()) {
+					document.newPage();
+				}
+			}
+
+			document.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new RuntimeException(e.getMessage());
+		}
+		return true;
 	}
 
 	private static boolean htmlStrToPdf(String htmlStr, String pdfPath, String pdfName, String ttfPath, Rectangle rectangle, PDFBuilder pdfBuilder) {
@@ -134,8 +172,8 @@ public class HtmlToPDF {
 			worker.parseXHtml(pdfWriter, document, new ByteArrayInputStream(htmlStr.getBytes(Charset.forName("UTF-8"))), (InputStream)null, new MyFontProviders(ttfPath));
 			document.close();
 			return true;
-		} catch (Exception var9) {
-			logger.error(var9.getMessage());
+		} catch (Exception e) {
+			logger.error(e.getMessage());
 			return false;
 		}
 	}
@@ -450,7 +488,12 @@ public class HtmlToPDF {
 	}
 
 	private static String htmlStrPreProcess(String htmlStr) {
+		//去除ueditor生成的<br/>
 		htmlStr = htmlStr.replaceAll("(<br>|<br/>)", "");
+		//追加公共样式
+		htmlStr = htmlStr.replaceAll("border(-width)?:[0-9px ]*;", "");
+		htmlStr = htmlStr.replaceAll("border=\"[0-9a-zA-Z]*\" ", "");
+		htmlStr = COMMON_STYLE + htmlStr;
 		return htmlStr;
 	}
 }
