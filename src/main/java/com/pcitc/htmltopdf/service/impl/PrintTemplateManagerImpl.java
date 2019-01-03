@@ -1,13 +1,12 @@
 package com.pcitc.htmltopdf.service.impl;
 
+import com.itextpdf.text.pdf.PdfStructTreeController.returnType;
 import com.pcitc.htmltopdf.dto.PrintTempDto;
+import com.pcitc.htmltopdf.entity.ImageEntity;
 import com.pcitc.htmltopdf.entity.PrintTempEntity;
 import com.pcitc.htmltopdf.service.PrintTemplateManager;
 import com.pcitc.htmltopdf.util.pdf.StringUtils;
-import com.pcitc.htmltopdf.util.print.DateUtil;
-import com.pcitc.htmltopdf.util.print.FormatUtil;
-import com.pcitc.htmltopdf.util.print.MoneyToUppercase;
-import com.pcitc.htmltopdf.util.print.PrintUtils;
+import com.pcitc.htmltopdf.util.print.*;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -15,7 +14,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.web.multipart.MultipartFile;
+
+import javax.management.RuntimeErrorException;
 import javax.sql.DataSource;
+
+import java.io.File;
 import java.math.BigDecimal;
 import java.util.*;
 
@@ -23,20 +27,8 @@ public class PrintTemplateManagerImpl implements PrintTemplateManager {
 
 	private final Logger log = LoggerFactory.getLogger(PrintTemplateManagerImpl.class);
 
-	private DataSource dataSource;
 	private JdbcTemplate jdbcTemplate;
 	private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
-
-	public PrintTemplateManagerImpl(DataSource dataSource) {
-		this.dataSource = dataSource;
-		jdbcTemplate = new JdbcTemplate(this.dataSource);
-		namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(this.dataSource);
-	}
-
-	public PrintTemplateManagerImpl(JdbcTemplate jdbcTemplate, NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
-		this.jdbcTemplate = jdbcTemplate;
-		this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
-	}
 
 	private static final String FORMAT_TIME = "yyyy-MM-dd HH:mm:ss.SSS";
 	private static final String FORMAT_TIME2 = "yyyy年MM月dd日 HH:mm:ss.SSS";
@@ -73,23 +65,6 @@ public class PrintTemplateManagerImpl implements PrintTemplateManager {
 		resMap.put("tableHtml", printTempMap.get("content").toString());
 		return resMap ;
 	}
-	
-	@Override
-	public List<Map<String, Object>> getMorePrintData(List<Map<String, Object>> paramMap) {
-		List<Map<String, Object>> tableArray = new ArrayList<Map<String, Object>>();
-		try {
-			for (Map<String, Object> stringObjectMap : paramMap) {
-				Map<String, Object> m = this.getSinglePrintData(stringObjectMap);
-				if(null == m)
-					break;
-				tableArray.add(m);
-			}
-		}catch (Exception e) {
-			e.printStackTrace();
-			throw new RuntimeException(e.getMessage());
-		}
-		return tableArray;
-	}
 
 	@Override
 	public int delete(String id) {
@@ -109,6 +84,13 @@ public class PrintTemplateManagerImpl implements PrintTemplateManager {
 	}
 
 	@Override
+	public List<ImageEntity> listImage() {
+		String sql = " select * from print_image ";
+		List<ImageEntity> list = ReflectUtil.listAutoReflect(jdbcTemplate.queryForList(sql), ImageEntity.class);
+		return list;
+	}
+
+	@Override
 	public Map<String, Object> queryList(String id, String name, String pageNo) {
 		PrintTempDto dto = new PrintTempDto();
 		if (pageNo != null) {
@@ -120,6 +102,7 @@ public class PrintTemplateManagerImpl implements PrintTemplateManager {
 		StringBuilder sql = new StringBuilder("select * from PRINT_TEMP where 1=1 ");
 		if (StringUtils.isNotBlank(id)) {
 			sql.append(" and ID like '%").append(id).append("%' ");
+			sql.append(" and ID like '%").append(id.toUpperCase()).append("%' ");
 		}
 		if (StringUtils.isNotBlank(name)) {
 			sql.append(" and NAME like '%").append(name).append("%' ");
@@ -127,7 +110,7 @@ public class PrintTemplateManagerImpl implements PrintTemplateManager {
 		dto.setOrderBy(" create_time desc ");
 
 		List<Map<String, Object>> list = this.queryMapByPage(sql.toString(), dto);
-
+		
 		Map<String, Object> resMap = new HashMap<String, Object>();
 		resMap.put("list", list);
 		resMap.put("_page", dto);
@@ -146,7 +129,7 @@ public class PrintTemplateManagerImpl implements PrintTemplateManager {
 		Map<String, Object> resMap = new HashMap<String, Object>();
 		if (count > 0) {
 			sql = "select * from PRINT_TEMP where ID = '" + printTempId + "' ";
-			PrintTempEntity entity = jdbcTemplate.queryForObject(sql, PrintUtils.getRowMapper());
+			PrintTempEntity entity = ReflectUtil.autoReflect(jdbcTemplate.queryForMap(sql), PrintTempEntity.class);
 			resMap.put("entity", entity);
 
 			// 相关sql
@@ -165,82 +148,80 @@ public class PrintTemplateManagerImpl implements PrintTemplateManager {
 	}
 
 	@Override
-	public String save(String printTempId,
-	                 String oldId,
-	                 String name,
-	                 String content,
-	                 String containSubTemp,
-                   String imgX,
-                   String imgY,
-                   String imgName,
-	                 String[] sqlContents,
-	                 String[] resultDataTypes,
-	                 String[] fieldNames,
-	                 String[] fieldTypes,
-	                 String[] fieldSources) {
-		if (StringUtils.isNotBlank(containSubTemp)) {
-			containSubTemp = containSubTemp.replaceAll(" ", "");
-		}
-
-		if (StringUtils.isNotBlank(oldId) && !(oldId.equals(printTempId))) {
-			int counter = jdbcTemplate.queryForObject("select count(*) from PRINT_TEMP where id='" + printTempId + "'", Integer.class);
+	public String save(PrintTempEntity printTempEntity) {
+		if (StringUtils.isNotBlank(printTempEntity.getOldId()) && !(printTempEntity.getOldId().equals(printTempEntity.getId()))) {
+			int counter = jdbcTemplate.queryForObject("select count(*) from PRINT_TEMP where id='" + printTempEntity.getId() + "'", Integer.class);
 			if (counter > 0) {
 				return "模板ID已存在";
 			}
 		}
 
 		try {
-			String nowtime = DateUtil.formatDate(new Date(), FORMAT_TIME);
+			printTempEntity.setUpdateTime(DateUtil.formatDate(new Date(), FORMAT_TIME));
+			printTempEntity.setUpdateUser("");
 
-			// 更新人 创建人
-			String currentUser = "";
-			if (StringUtils.isNotBlank(oldId)) {
-				jdbcTemplate.update(" update PRINT_TEMP set id = ?, name=?, content=?,CONTAIN_SUB_TEMP=?, update_time=?, update_user=?, img_x=?, img_y=?, IMG_NAME=? where id='" + oldId + "'",
-								new Object[]{printTempId, name, content, containSubTemp, nowtime, currentUser, imgX, imgY, imgName});
+			//更新 print_temp
+			List<Object> list = new ArrayList<Object>();
+			list.add(printTempEntity.getId());
+			list.add(printTempEntity.getName());
+			list.add(printTempEntity.getContent());
+			list.add(printTempEntity.getUpdateTime());
+			list.add(printTempEntity.getUpdateUser());
+			list.add(printTempEntity.getImgIdSeal());
+			list.add(printTempEntity.getImgIdLogo());
+			list.add(printTempEntity.getPageSize());
+			list.add(printTempEntity.getPageNumber());
+			list.add(printTempEntity.getPageCalculation());
+			list.add(printTempEntity.getPageDirection());
+			if (StringUtils.isNotBlank(printTempEntity.getOldId())) {
+				jdbcTemplate.update(" update PRINT_TEMP set ID = ?, NAME=?, CONTENT=?,  UPDATE_TIME=?, UPDATE_USER=?,  IMG_ID_SEAL=?, IMG_ID_LOGO=?,  PAGE_SIZE=?, PAGE_NUMBER=?, PAGE_CALCULATION=?, PAGE_DIRECTION=? where id='" + printTempEntity.getOldId() + "'", list.toArray());
 			} else {
-				jdbcTemplate.update(" insert into PRINT_TEMP (ID , NAME , CONTENT,CONTAIN_SUB_TEMP, create_time,create_user,update_user, update_time, IMG_X, IMG_Y, IMG_NAME) values(?,?,?,?,?,?,?,?,?,?,?)",
-								new Object[]{printTempId, name, content, containSubTemp, nowtime, currentUser, currentUser, nowtime, imgX, imgY, imgName});
+				list.add(DateUtil.formatDate(new Date(), FORMAT_TIME));
+				list.add("");
+				jdbcTemplate.update(" insert into PRINT_TEMP (ID , NAME , CONTENT, update_user, update_time, img_id_seal, img_id_logo, page_size, page_number, page_calculation, page_direction, create_time,create_user) values(?,?,?,?,?,?,?,?,?,?,?,?,?)", list.toArray());
 			}
 
 			// // 保存 sql
 			// 1.取所有sql //sql语句 取结果集类型
 
-			// 更新所有sql
-			String printTempSqlDelete = "delete from PRINT_TEMP_SQL where PRINT_TEMP_ID = '" + printTempId + "' ";
+			// 更新所有sql, 先删除，再插入(注：如果修改了id，需要用oldId 去删除)
+			String printTempSqlDelete;
+			if (StringUtils.isNotBlank(printTempEntity.getOldId())) {
+				 printTempSqlDelete = "delete from PRINT_TEMP_SQL where PRINT_TEMP_ID = '" + printTempEntity.getOldId() + "' ";
+			} else {
+				printTempSqlDelete = "delete from PRINT_TEMP_SQL where PRINT_TEMP_ID = '" + printTempEntity.getId() + "' ";
+			}
 			jdbcTemplate.update(printTempSqlDelete);
-			if (sqlContents != null && sqlContents.length > 0) {
-				for (int i = 0; i < sqlContents.length; i++) {
-
-					String printTempSqlCount = " select count(*) from PRINT_TEMP_SQL where PRINT_TEMP_ID = '" + printTempId + "' ";
-					int sqlCount = jdbcTemplate.queryForObject(printTempSqlCount, Integer.class) + 1;
+			if (printTempEntity.getSqlContent() != null && printTempEntity.getSqlContent().length > 0) {
+				for (int i = 0; i < printTempEntity.getSqlContent().length; i++) {
 					String printTempSqlInsert = " insert into PRINT_TEMP_SQL(ID, PRINT_TEMP_ID, CONTENT, RESULT_DATA_TYPE) values(?,?,?,?)";
-					jdbcTemplate.update(printTempSqlInsert, new Object[]{
-									printTempId + "_" + sqlCount, printTempId, sqlContents[i], resultDataTypes[i]});
+					jdbcTemplate.update(printTempSqlInsert, new Object[]{printTempEntity.getId() + "_" + (i + 1), printTempEntity.getId(), printTempEntity.getSqlContent()[i], printTempEntity.getResultDataType()[i]});
 				}
 			}
 
 			// 保存 数据类型
-//			String[] fieldNames = request.getParameterValues("fieldName");// 保存时 去空 ，以便后期取值
-//			String[] fieldTypes = request.getParameterValues("fieldType");
-//			String[] fieldSources = request.getParameterValues("fieldSource");
 
 			// 更新所有 数据字段信息
-			String fieldSqlDelete = "delete from PRINT_TEMP_DATATYPE where PRINT_TEMP_ID = '"
-							+ printTempId + "' ";
+			String fieldSqlDelete;
+			if(StringUtils.isNotBlank(printTempEntity.getOldId())) {
+				fieldSqlDelete = "delete from PRINT_TEMP_DATATYPE where PRINT_TEMP_ID = '" + printTempEntity.getOldId() + "' ";
+			} else {
+				fieldSqlDelete = "delete from PRINT_TEMP_DATATYPE where PRINT_TEMP_ID = '" + printTempEntity.getId() + "' ";
+			}
 			jdbcTemplate.update(fieldSqlDelete);
-			if (fieldNames != null && fieldNames.length > 0) {
-				for (int i = 0; i < fieldNames.length; i++) {
-					String fieldSqlCount = " select count(*) from PRINT_TEMP_DATATYPE where PRINT_TEMP_ID = '"
-									+ printTempId + "' ";
-					int sqlCount = jdbcTemplate.queryForObject(fieldSqlCount, Integer.class) + 1;
+			if (printTempEntity.getFieldName() != null && printTempEntity.getFieldName().length > 0) {
+				for (int i = 0; i < printTempEntity.getFieldName().length; i++) {
+					//参数中，如果fileSource 长度不够的问题
+					
+					String fieldSource = "";
+					if(printTempEntity.getFieldSource().length > i) {
+						fieldSource = printTempEntity.getFieldSource()[i];
+					} 
 					String printTempSqlInsert = " insert into PRINT_TEMP_DATATYPE(ID, PRINT_TEMP_ID, FIELD_NAME, FIELD_TYPE, FIELD_SOURCE) values(?,?,?,?,?)";
-					jdbcTemplate.update(printTempSqlInsert, new Object[]{
-									printTempId + "_" + sqlCount, printTempId,
-									fieldNames[i].replaceAll(" ", "").toUpperCase()// 1.保存时 去空;2.转为大写
-									, fieldTypes[i], fieldSources[i]});
+					// 1.保存时 去空;2.转为大写
+					jdbcTemplate.update(printTempSqlInsert, new Object[]{printTempEntity.getId() + "_" + (i + 1), printTempEntity.getId(), printTempEntity.getFieldName()[i].replaceAll(" ", "").toUpperCase(), printTempEntity.getFieldType()[i], fieldSource});
 				}
 			}
-
 		} catch (Exception e) {
 			e.printStackTrace();
 			return "error";
@@ -252,87 +233,6 @@ public class PrintTemplateManagerImpl implements PrintTemplateManager {
 	public int delSQL(String id) {
 			String sql = " delete from PRINT_TEMP_SQL where id = ? ";
 			return this.jdbcTemplate.update(sql, new Object[]{id});
-	}
-
-	/**
-	 * 
-	 * 打印模板格式大致分三种类型 
-	 * 	 不同的类型说明见 PrintTemplateManagerImpl 开始部分
-	 */
-	@Override
-	public Map<String, Object> getSinglePrintData(Map<String, Object> paramMap)  {
-		log.info(paramMap.toString());
-		System.out.println(paramMap);
-		Map<String, Object> a = new HashMap<String, Object>();
-		List<String> tableArray = null;
-		List<PrintTempEntity> printTempEntityArray = null;
-		try {
-			if(paramMap.get("businessId") == null){
-				throw new RuntimeException("业务ID为必填项");
-			}
-			String businessId = paramMap.get("businessId").toString();
-			
-			// print data
-			Map<String, Object > headerDataMap = paramMap;
-			List<Map<String, Object>> tableDataList = new ArrayList<Map<String, Object>>();
-			
-			// template
-			String getTempIdSql = String.format("select TEMP_ID from PRINT_TEMP_BUSINESS where BUSINESS_ID = '%s' ", businessId);
-			String printTempId = jdbcTemplate.queryForObject(getTempIdSql, String.class);
-
-			String printSql = String.format("select * from PRINT_TEMP where ID = '%s' ", printTempId);
-			Map<String, Object> printTempMap = jdbcTemplate.queryForMap(printSql);
-			if (printTempMap == null || printTempMap.get("content") == null) {
-				return null;
-			}
-			
-			// print data		
-			String printTempSql = String.format(" select * from PRINT_TEMP_SQL where PRINT_TEMP_ID = '%s' ", printTempId);
-			List<Map<String, Object>> printTempSqls = jdbcTemplate.queryForList(printTempSql);
-			if (printTempSqls != null && !printTempSqls.isEmpty()) {
-				for (Map<String, Object> map : printTempSqls) {
-					String tempSql = map.get("CONTENT").toString();
-					String resultDataTypes = map.get("RESULT_DATA_TYPE").toString();
-					
-					List<Map<String, Object>> tempList = namedParameterJdbcTemplate.queryForList(tempSql, paramMap);
-					if (tempList == null || tempList.isEmpty()) {
-						continue;
-					}
-					
-					if(resultDataTypes.equals(RESULTDATATYPE_TYPE_1)){// Map
-						headerDataMap.putAll(tempList.get(0));
-					}else{
-						tableDataList.addAll(tempList);// List
-					}
-				}
-			}
-			
-			// format
-			String printTempDatafield = " select * from PRINT_TEMP_DATATYPE where PRINT_TEMP_ID = '" + printTempId + "' ";
-			List<Map<String, Object>> printTempDatafields = jdbcTemplate.queryForList(printTempDatafield);
-			tableDataList = this.getFormatDataForList(printTempId, tableDataList, paramMap, printTempDatafields);
-			headerDataMap = this.getFormatDataForMap(headerDataMap, paramMap, printTempDatafields);
-			
-			// map
-			String tableHtml = printTempMap.get("CONTENT").toString();
-
-			if(headerDataMap != null){
-				tableHtml = this.getTableHtmlDataMap(headerDataMap, tableHtml);
-			}
-			
-			// print html
-			String containSubTemp = printTempMap.get("CONTAIN_SUB_TEMP")==null?"":printTempMap.get("CONTAIN_SUB_TEMP").toString();
-			tableArray = this.getTotalSubPrintTempPrintDataByCurrentTempId(tableHtml, containSubTemp, paramMap);
-
-			a.put("html", tableArray);
-			a.put("imgX", printTempMap.get("IMG_X"));
-			a.put("imgY", printTempMap.get("IMG_Y"));
-			a.put("imgName", printTempMap.get("IMG_NAME"));
-		}catch (Exception e) {
-			e.printStackTrace();
-			throw new RuntimeException(e.getMessage());
-		}
-		return a;
 	}
 
 	/* 列表(不含子模板) 取打印数据 */
@@ -620,6 +520,36 @@ public class PrintTemplateManagerImpl implements PrintTemplateManager {
 		return tableHtml;
 	}
 	
+	@Override
+	public String upload(MultipartFile file, String rootPath) {
+        if (!file.isEmpty()) {
+            try {
+                // 文件存放服务端的位置
+                if(null == rootPath) throw new RuntimeException("rootPath is null");
+                File dir = new File(rootPath);
+                if (!dir.exists())
+                    dir.mkdirs();
+                // 写文件到服务器
+                String fileName = createFileName(file.getOriginalFilename());
+                File serverFile = new File(dir.getAbsolutePath() + File.separator + fileName);
+                if(fileName.isEmpty()) {
+                    fileName = createFileName(file.getOriginalFilename());
+                    serverFile = new File(dir.getAbsolutePath() + File.separator + fileName);
+                }
+                file.transferTo(serverFile);
+                return fileName;
+            } catch (Exception e) {
+            	 throw new RuntimeException("You failed to upload " +  file.getOriginalFilename() + " => " + e.getMessage());
+            }
+        } else {
+        	throw new RuntimeException("You failed to upload " +  file.getOriginalFilename() + " because the file was empty.");
+        }
+    }
+	
+	private String createFileName(String originalFilename) {
+        return System.currentTimeMillis()/1000 + originalFilename;
+    }
+	
 	/**
 	 * 
 	 * 1.取模板
@@ -652,6 +582,4 @@ public class PrintTemplateManagerImpl implements PrintTemplateManager {
 	public void setNamedParameterJdbcTemplate(NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
 		this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
 	}
-	
-
 }

@@ -1,17 +1,19 @@
 package com.pcitc.htmltopdf.util.print;
 
-import com.pcitc.htmltopdf.dto.PrintTempDto;
-import com.pcitc.htmltopdf.entity.PrintTempEntity;
-import com.pcitc.htmltopdf.util.pdf.StringUtils;
-import org.springframework.jdbc.core.RowMapper;
-
-import javax.servlet.http.HttpServletRequest;
 import java.sql.Clob;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+import javax.servlet.http.HttpServletRequest;
+
+import com.pcitc.htmltopdf.dto.PrintTempDto;
+import com.pcitc.htmltopdf.entity.PrintTempEntity;
+import com.pcitc.htmltopdf.util.pdf.StringUtils;
+
+import org.springframework.jdbc.core.RowMapper;
+
 public class PrintUtils {
-	
+
 	public static String getQueryString(HttpServletRequest request, PrintTempDto pagerDto) {
 		String str = request.getQueryString();
 
@@ -21,7 +23,7 @@ public class PrintUtils {
 			if ((querystrs != null) && (querystrs.length > 0)) {
 				for (String s : querystrs) {
 					if ((!(s.startsWith("pageNo")))
-							&& (!(s.startsWith("pageCount")))) {
+									&& (!(s.startsWith("pageCount")))) {
 						querystr.append(s).append("&");
 					}
 				}
@@ -34,20 +36,15 @@ public class PrintUtils {
 		return new RowMapper<PrintTempEntity>() {
 			@Override
 			public PrintTempEntity mapRow(ResultSet rs, int value)
-					throws SQLException {
+							throws SQLException {
 				PrintTempEntity entity = new PrintTempEntity();
 				entity.setId(rs.getString("id"));
 				entity.setName(rs.getString("name"));
 				entity.setContent(getStringByClob(rs.getClob("content")));
-				entity.setContainSubTemp(rs.getString("CONTAIN_SUB_TEMP"));
 				entity.setUpdateTime(rs.getString("update_time"));
 				entity.setCreateTime(rs.getString("create_time"));
 				entity.setCreateUser(rs.getString("CREATE_USER"));
 				entity.setUpdateUser(rs.getString("UPDATE_USER"));
-				entity.setImgX(rs.getString("IMG_X"));
-				entity.setImgY(rs.getString("IMG_Y"));
-				entity.setImgName(rs.getString("IMG_NAME"));
-
 				return entity;
 			}
 		};

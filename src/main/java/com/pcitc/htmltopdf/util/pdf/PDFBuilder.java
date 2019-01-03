@@ -2,6 +2,8 @@ package com.pcitc.htmltopdf.util.pdf;
 
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.*;
+import com.pcitc.htmltopdf.entity.ImageEntity;
+import com.pcitc.htmltopdf.entity.PrintTempEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,38 +18,16 @@ public class PDFBuilder extends PdfPageEventHelper {
 	public PdfTemplate total;
 	public BaseFont bf;
 	public Font fontDetail;
-	public String imgName;
-	public String imgX;
-	public String imgY;
 	public int distance;
-	public String position;
-	public String pageNumberFlag;
+	//seal、logo
+	public PrintTempEntity printTempEntity;
+	public String imgPath;
 
 	public PDFBuilder() {
 		this.pageSize = PageSize.A4;
 		this.bf = null;
 		this.fontDetail = null;
-		this.imgName = null;
-		this.imgX = null;
-		this.imgY = null;
 		this.distance = 50;
-		this.position = "rb";
-		this.pageNumberFlag = "true";
-	}
-
-	public PDFBuilder(String yeMei, int presentFontSize, Rectangle pageSize) {
-		this.pageSize = PageSize.A4;
-		this.bf = null;
-		this.fontDetail = null;
-		this.imgName = null;
-		this.imgX = null;
-		this.imgY = null;
-		this.distance = 50;
-		this.position = "rb";
-		this.pageNumberFlag = "true";
-		this.header = yeMei;
-		this.presentFontSize = presentFontSize;
-		this.pageSize = pageSize;
 	}
 
 	public void setHeader(String header) {
@@ -63,27 +43,39 @@ public class PDFBuilder extends PdfPageEventHelper {
 	}
 
 	public void onEndPage(PdfWriter writer, Document document) {
-		if("true".equalsIgnoreCase(this.pageNumberFlag)) {
+		//页码
+		if("1".equals(this.printTempEntity.getPageNumber())) {
 			this.addPage(writer, document);
 		}
-		if (null != this.imgName && !"".equals(this.imgName)) {
-			this.addImg(writer, document);
+		//印章
+		ImageEntity seal = this.printTempEntity.getImgSeal();
+		if (null != seal)  {
+			this.addImg(document, seal);
+		}
+		//logo
+		ImageEntity logo = this.printTempEntity.getImgLogo();
+		if (null != logo) {
+			this.addImg(document, logo);
 		}
 
 	}
 
-	private void addImg(PdfWriter writer, Document document) {
+	private void addImg(Document document, ImageEntity imageEntity) {
 		try {
-			Image image = Image.getInstance(this.imgName);
-			float scalePercentage = 24.0F;
-			image.scalePercent(scalePercentage, scalePercentage);
-			image.setAbsolutePosition(Float.parseFloat(this.imgX), Float.parseFloat(this.imgY));
-			Rectangle rectangle = document.getPageSize();
+			Image image = Image.getInstance(this.imgPath + File.separator + imageEntity.getPath());
+			//解决拉伸的问题
+			if(Float.parseFloat(imageEntity.getWidth()) == 0 || Float.parseFloat(imageEntity.getHeight()) == 0) {
+				float scalePercentage = 24.0F;
+				image.scalePercent(scalePercentage, scalePercentage);
+			} else {
+				image.scaleAbsolute(Float.parseFloat(imageEntity.getWidth()), Float.parseFloat(imageEntity.getHeight()));
+			}
+			//设置位置
+			image.setAbsolutePosition(Float.parseFloat(imageEntity.getX()), Float.parseFloat(imageEntity.getY()));
 			document.add(image);
-		} catch (Exception var6) {
-			var6.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
-
 	}
 
 	public void addPage(PdfWriter writer, Document document) {
@@ -91,14 +83,13 @@ public class PDFBuilder extends PdfPageEventHelper {
 			if (this.bf == null) {
 				this.bf = BaseFont.createFont("STSong-Light", "UniGB-UCS2-H", false);
 			}
-
 			if (this.fontDetail == null) {
 				this.fontDetail = new Font(this.bf, (float)this.presentFontSize, 0);
 			}
-		} catch (DocumentException var8) {
-			var8.printStackTrace();
-		} catch (IOException var9) {
-			var9.printStackTrace();
+		} catch (DocumentException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 
 		ColumnText.showTextAligned(writer.getDirectContent(), 0, new Phrase(this.header, this.fontDetail), document.left(), document.top() + 20.0F, 0.0F);
@@ -134,7 +125,7 @@ public class PDFBuilder extends PdfPageEventHelper {
 	}
 
 	public void onCloseDocument(PdfWriter writer, Document document) {
-		if("true".equalsIgnoreCase(this.pageNumberFlag)) {
+		if("1".equals(this.printTempEntity.getPageNumber())) {
 			this.total.beginText();
 			this.total.setFontAndSize(this.bf, (float)this.presentFontSize);
 			String foot2 = " " + writer.getPageNumber() + " 页";

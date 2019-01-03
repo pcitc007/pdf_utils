@@ -21,7 +21,7 @@ public enum PageSizeEnum {
 
 	public static Rectangle getPageSize(String code) {
     for (PageSizeEnum value : values()) {
-	    if (code.equalsIgnoreCase(value.code)) {
+	    if (value.code.equalsIgnoreCase(code)) {
 	    	return value.pageSize;
 	    }
     }

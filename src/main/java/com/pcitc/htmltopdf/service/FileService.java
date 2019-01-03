@@ -12,7 +12,7 @@ import java.io.File;
  * @date 2018/11/13 14:02
  */
 public interface FileService {
-
+    //取消文件下载
 //    ResponseEntity<FileSystemResource> export(File file);
 
     String upload(MultipartFile file, String rootPath);

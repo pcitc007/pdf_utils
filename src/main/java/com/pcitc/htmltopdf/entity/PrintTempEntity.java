@@ -1,70 +1,53 @@
 package com.pcitc.htmltopdf.entity;
+
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 public class PrintTempEntity implements Serializable {
-	
+
 	private static final long serialVersionUID = 1L;
 
-	/**  */
-	private String  id;
-			
-	/**  */
-	private String  content;
-	
-	/** 其他模板标识(#模板标识1#_#模板标识2#)*/
-	private String containSubTemp;
-			
-	/**  */
-	private String  createUser;
-			
-	/**  */
-	private String  createTime;
-			
-	/**  */
-	private String  updateUser;
-			
-	/**  */
+	private String oldId;
+	//模板相关
+	private String id;
+	private String content;
+	private String createUser;
+	private String createTime;
+	private String updateUser;
 	private String updateTime;
-			
-	/**  */
-	private String  name;
-	/**  */
-	private String  imgX;
-	/**  */
-	private String  imgY;
-	/**  */
-	private String  imgName;
+	private String name;
+	//数据类型
+	private String[] sqlContent;
+	private String[] resultDataType;
+	private String[] fieldName;
+	private String[] fieldType;
+	private String[] fieldSource;
 
-	public String getImgX() {
-		return imgX;
+	//pdf
+	private String pageNumber;
+	private String pageSize;
+	private String pageDirection;
+	private String pageCalculation;
+	//图片信息
+	private String imgIdSeal;
+	private String imgIdLogo;
+	private ImageEntity imgSeal;
+	private ImageEntity imgLogo;
+	//html
+	private String html;
+
+	public static long getSerialVersionUID() {
+		return serialVersionUID;
 	}
 
-	public void setImgX(String imgX) {
-		this.imgX = imgX;
+	public String getOldId() {
+		return oldId;
 	}
 
-	public String getImgY() {
-		return imgY;
-	}
-
-	public void setImgY(String imgY) {
-		this.imgY = imgY;
-	}
-
-	public String getImgName() {
-		return imgName;
-	}
-
-	public void setImgName(String imgName) {
-		this.imgName = imgName;
-	}
-
-	public String getContainSubTemp() {
-		return containSubTemp;
-	}
-
-	public void setContainSubTemp(String containSubTemp) {
-		this.containSubTemp = containSubTemp;
+	public void setOldId(String oldId) {
+		this.oldId = oldId;
 	}
 
 	public String getId() {
@@ -123,14 +106,116 @@ public class PrintTempEntity implements Serializable {
 		this.name = name;
 	}
 
-	public static long getSerialversionuid() {
-		return serialVersionUID;
+	public String[] getSqlContent() {
+		return sqlContent;
 	}
-			
 
-	// =========getter/setter begin=========
-	
-	// =========getter/setter end=========
+	public void setSqlContent(String[] sqlContent) {
+		this.sqlContent = sqlContent;
+	}
 
+	public String[] getResultDataType() {
+		return resultDataType;
+	}
+
+	public void setResultDataType(String[] resultDataType) {
+		this.resultDataType = resultDataType;
+	}
+
+	public String[] getFieldName() {
+		return fieldName;
+	}
+
+	public void setFieldName(String[] fieldName) {
+		this.fieldName = fieldName;
+	}
+
+	public String[] getFieldType() {
+		return fieldType;
+	}
+
+	public void setFieldType(String[] fieldType) {
+		this.fieldType = fieldType;
+	}
+
+	public String[] getFieldSource() {
+		return fieldSource;
+	}
+
+	public void setFieldSource(String[] fieldSource) {
+		this.fieldSource = fieldSource;
+	}
+
+	public String getPageNumber() {
+		return pageNumber;
+	}
+
+	public void setPageNumber(String pageNumber) {
+		this.pageNumber = pageNumber;
+	}
+
+	public String getPageSize() {
+		return pageSize;
+	}
+
+	public void setPageSize(String pageSize) {
+		this.pageSize = pageSize;
+	}
+
+	public String getPageDirection() {
+		return pageDirection;
+	}
+
+	public void setPageDirection(String pageDirection) {
+		this.pageDirection = pageDirection;
+	}
+
+	public String getPageCalculation() {
+		return pageCalculation;
+	}
+
+	public void setPageCalculation(String pageCalculation) {
+		this.pageCalculation = pageCalculation;
+	}
+
+	public String getImgIdSeal() {
+		return imgIdSeal;
+	}
+
+	public void setImgIdSeal(String imgIdSeal) {
+		this.imgIdSeal = imgIdSeal;
+	}
+
+	public String getImgIdLogo() {
+		return imgIdLogo;
+	}
+
+	public void setImgIdLogo(String imgIdLogo) {
+		this.imgIdLogo = imgIdLogo;
+	}
+
+	public ImageEntity getImgSeal() {
+		return imgSeal;
+	}
+
+	public void setImgSeal(ImageEntity imgSeal) {
+		this.imgSeal = imgSeal;
+	}
+
+	public ImageEntity getImgLogo() {
+		return imgLogo;
+	}
+
+	public void setImgLogo(ImageEntity imgLogo) {
+		this.imgLogo = imgLogo;
+	}
+
+	public String getHtml() {
+		return html;
+	}
+
+	public void setHtml(String html) {
+		this.html = html;
+	}
 }
 

@@ -1,17 +1,17 @@
 package com.pcitc.htmltopdf.service;
 
 import com.pcitc.htmltopdf.dto.PrintTempDto;
+import com.pcitc.htmltopdf.entity.ImageEntity;
+import com.pcitc.htmltopdf.entity.PrintTempEntity;
 
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.web.multipart.MultipartFile;
+
 public interface PrintTemplateManager {
 
 	Map<String, Object> getTableHtml(Map<String, Object> paramMap);
-
-	Map<String, Object> getSinglePrintData(Map<String, Object> paramMap);
-
-	List<Map<String, Object>> getMorePrintData(List<Map<String, Object>> paramMap) ;
 
 	int delete(String id);
 
@@ -20,6 +20,12 @@ public interface PrintTemplateManager {
 	 * @return List<Map<String, Object>>
 	 */
 	List<Map<String, Object>> queryMapByPage(String sql, PrintTempDto pagerDto);
+
+	/**
+	 * 查询 img列表
+	 * @return List<Map<String, Object>>
+	 */
+	List<ImageEntity> listImage();
 
 	/**
 	 * 查询列表
@@ -37,23 +43,8 @@ public interface PrintTemplateManager {
 
 	/**
 	 * delSQL 保存和修改
-	 * @param printTempId
-	 * @param oldId
-	 * @param name
-	 * @param content
-	 * @param containSubTemp
-	 * @param sqlContents
-	 * @param resultDataTypes
-	 * @param fieldNames
-	 * @param fieldTypes
-	 * @param fieldSources
-	 * @return
 	 */
-  String save(String printTempId, String oldId, String name, String content, String containSubTemp,
-              String imgX,
-              String imgY,
-              String imgName,
-              String[] sqlContents, String[] resultDataTypes, String[] fieldNames, String[] fieldTypes, String[] fieldSources);
+  String save(PrintTempEntity printTempEntity);
 
 	/**
 	 * 删除sql
@@ -61,4 +52,15 @@ public interface PrintTemplateManager {
 	 * @return
 	 */
 	int delSQL(String id);
+	
+	/**
+	 * 文件上传
+	 * @author baitao
+	 * @date 2018-12-28
+	 * 
+	 * @param file
+	 * @param rootPath
+	 * @return
+	 */
+	String upload(MultipartFile file, String rootPath);
 }
