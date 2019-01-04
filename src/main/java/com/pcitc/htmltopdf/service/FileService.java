@@ -1,11 +1,7 @@
 package com.pcitc.htmltopdf.service;
 
 import com.pcitc.htmltopdf.entity.Html2PdfEntity;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.io.File;
 
 /**
  * @author baitao

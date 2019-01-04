@@ -1,7 +1,7 @@
 package com.pcitc.htmltopdf.dto;
 
 
-public class PrintTempDto  {
+public class PrintTempDto {
 	 private long pageNo = 1L;
 	 private long pageSize;
 	 private long perPage = 10L;

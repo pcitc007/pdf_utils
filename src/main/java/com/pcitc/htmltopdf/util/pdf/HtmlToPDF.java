@@ -27,7 +27,10 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.util.HashMap;
@@ -54,52 +57,30 @@ public class HtmlToPDF {
 	private static boolean tableHeadStrong = false;
 
 	/**
-	 * 不需要印章， ttf默认 ./src/main/resources/static/WeiRuanYaHei-1.ttf
+	 *
 	 * @param htmlStr
-	 * @param calc
-	 * @param pageSize
-	 * @param direction
-	 * @param rootPath
-	 * @return
-	 */
-	public static String htmlStrToPdf(String htmlStr, String calc, String pageSize, String direction, String rootPath, String ttfPath) {
-		return htmlStrToPdf(htmlStr, calc, pageSize, direction, null, null, null, rootPath, ttfPath);
-	}
-
-	/**
-	 *需要印章和位置， ttf默认 ./src/main/resources/static/WeiRuanYaHei-1.ttf
-	 * @param htmlStr
-	 * @param calc
-	 * @param pageSize
-	 * @param direction
-	 * @param imgName
-	 * @param imgX
-	 * @param imgY
-	 * @param rootPath
+	 * @param printTempEntity
+	 * @param imgPath
+	 * @param pdfPath
 	 * @param ttfPath
 	 * @return
 	 */
-	public static String htmlStrToPdf(String htmlStr, String calc, String pageSize, String direction, String imgName, String imgX, String imgY, String rootPath, String ttfPath) {
+	public static String htmlStrToPdf(String htmlStr, PrintTempEntity printTempEntity, String imgPath, String pdfPath, String ttfPath) {
 		String pdfName = CommonUtils.getUUID() + ".pdf";
-		Rectangle rectangle = PageSizeEnum.getPageSize(pageSize);
-		if ("hx".equalsIgnoreCase(direction)) {
+		Rectangle rectangle = PageSizeEnum.getPageSize(printTempEntity.getPageSize());
+		if ("1".equals(printTempEntity.getPageDirection())) {
 			rectangle.rotate();
 		}
 
-		if (StringUtils.isBlank(ttfPath)) {
-			ttfPath = "./src/main/resources/static/WeiRuanYaHei-1.ttf";
-		}
-
 		PDFBuilder pdfBuilder = new PDFBuilder();
-		if (StringUtils.isNotBlank(calc) && calc.equalsIgnoreCase("calc")) {
-			tableToPdf(htmlStr, rootPath, pdfName, ttfPath, rectangle, pdfBuilder);
-		} else {
-			htmlStrToPdf(htmlStr, rootPath, pdfName, ttfPath, rectangle, pdfBuilder);
-		}
+//		if (StringUtils.isNotBlank(calc) && calc.equalsIgnoreCase("calc")) {
+//			tableToPdf(htmlStr, rootPath, pdfName, ttfPath, rectangle, pdfBuilder);
+//		} else {
+//			htmlStrToPdf(htmlStr, rootPath, pdfName, ttfPath, rectangle, pdfBuilder);
+//		}
 
 		return pdfName;
 	}
-
 
 	/**
 	 * 多种业务的打印，
@@ -116,13 +97,29 @@ public class HtmlToPDF {
 		PDFBuilder pdfBuilder = new PDFBuilder();
 		pdfBuilder.printTempEntity = printTempEntity;
 		pdfBuilder.imgPath = imgPath;
-		htmlToPdfListHtml(htmlStrList, pdfPath, pdfName, ttfPath, rectangle, pdfBuilder);
+		if("0".equals(printTempEntity.getPageCalculation())) {
+			htmlToPdfListHtml(htmlStrList, pdfPath, pdfName, ttfPath, rectangle, pdfBuilder);
+		} else if("1".equals(printTempEntity.getPageCalculation())) {
+			tableToPdf(htmlStrList.get(0), pdfPath, pdfName, ttfPath, rectangle, pdfBuilder);
+		}
 		return pdfName;
 	}
+
+	/**
+	 * 多业务
+	 * @param htmlStrList
+	 * @param pdfPath
+	 * @param pdfName
+	 * @param ttfPath
+	 * @param rectangle
+	 * @param pdfBuilder
+	 * @return
+	 */
 	private static boolean htmlToPdfListHtml(List<String> htmlStrList, String pdfPath, String pdfName, String ttfPath, Rectangle rectangle, PDFBuilder pdfBuilder) {
 		try {
 			Document document = new Document(rectangle);
 			document.setMargins(18, 18, 54, 36);
+
 			PdfWriter pdfWriter = PdfWriter.getInstance(document, new FileOutputStream(pdfPath + File.separator + pdfName));
 			pdfWriter.setPageEvent(pdfBuilder);
 			document.open();
@@ -132,8 +129,13 @@ public class HtmlToPDF {
 			for (int i = 0; i < htmlStrList.size(); i++) {
 				String htmlStr = htmlStrList.get(i);
 				htmlStr = htmlStrPreProcess(htmlStr);
+
+				org.jsoup.nodes.Document document1 = Jsoup.parse(htmlStr);
+				document1.outputSettings(new org.jsoup.nodes.Document.OutputSettings().syntax(org.jsoup.nodes.Document.OutputSettings.Syntax.xml));
+
+
 				
-				worker.parseXHtml(pdfWriter, document, new ByteArrayInputStream(htmlStr.getBytes()), (InputStream)null, new MyFontProviders(ttfPath));
+				worker.parseXHtml(pdfWriter, document, new ByteArrayInputStream(document1.outerHtml().getBytes()), (InputStream)null, new MyFontProviders(ttfPath));
 				if((i+1) < htmlStrList.size()) {
 					document.newPage();
 				}
@@ -147,23 +149,43 @@ public class HtmlToPDF {
 		return true;
 	}
 
-	private static boolean htmlStrToPdf(String htmlStr, String pdfPath, String pdfName, String ttfPath, Rectangle rectangle, PDFBuilder pdfBuilder) {
-		try {
-			htmlStr = htmlStrPreProcess(htmlStr);
-			Document document = new Document(rectangle);
-			PdfWriter pdfWriter = PdfWriter.getInstance(document, new FileOutputStream(pdfPath + File.separator + pdfName));
-			pdfWriter.setPageEvent(pdfBuilder);
-			document.open();
-			XMLWorkerHelper worker = XMLWorkerHelper.getInstance();
-			worker.parseXHtml(pdfWriter, document, new ByteArrayInputStream(htmlStr.getBytes(Charset.forName("UTF-8"))), (InputStream)null, new MyFontProviders(ttfPath));
-			document.close();
-			return true;
-		} catch (Exception e) {
-			logger.error(e.getMessage());
-			return false;
-		}
-	}
+//	/**
+//	 * 列表不计算
+//	 * @param htmlStr
+//	 * @param pdfPath
+//	 * @param pdfName
+//	 * @param ttfPath
+//	 * @param rectangle
+//	 * @param pdfBuilder
+//	 * @return
+//	 */
+//	private static boolean htmlStrToPdf(String htmlStr, String pdfPath, String pdfName, String ttfPath, Rectangle rectangle, PDFBuilder pdfBuilder) {
+//		try {
+//			htmlStr = htmlStrPreProcess(htmlStr);
+//			Document document = new Document(rectangle);
+//			PdfWriter pdfWriter = PdfWriter.getInstance(document, new FileOutputStream(pdfPath + File.separator + pdfName));
+//			pdfWriter.setPageEvent(pdfBuilder);
+//			document.open();
+//			XMLWorkerHelper worker = XMLWorkerHelper.getInstance();
+//			worker.parseXHtml(pdfWriter, document, new ByteArrayInputStream(htmlStr.getBytes(Charset.forName("UTF-8"))), (InputStream)null, new MyFontProviders(ttfPath));
+//			document.close();
+//			return true;
+//		} catch (Exception e) {
+//			logger.error(e.getMessage());
+//			return false;
+//		}
+//	}
 
+	/**
+	 * 列表计算
+	 * @param htmlStr
+	 * @param pdfPath
+	 * @param pdfName
+	 * @param ttfPath
+	 * @param rectangle
+	 * @param pdfBuilder
+	 * @return
+	 */
 	private static boolean tableToPdf(String htmlStr, String pdfPath, String pdfName, String ttfPath, Rectangle rectangle, PDFBuilder pdfBuilder) {
 
 		// html  预处理
@@ -527,6 +549,7 @@ public class HtmlToPDF {
 		//追加公共样式
 		htmlStr = htmlStr.replaceAll("border(-width)?:[0-9px ]*;", "");
 		htmlStr = htmlStr.replaceAll("border=\"[0-9a-zA-Z]*\" ", "");
+		htmlStr = htmlStr.replaceAll("border=0", "");
 		htmlStr = COMMON_STYLE + htmlStr;
 		return htmlStr;
 	}

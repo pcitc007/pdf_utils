@@ -2,12 +2,7 @@ package com.pcitc.htmltopdf.service.impl;
 
 import com.pcitc.htmltopdf.entity.Html2PdfEntity;
 import com.pcitc.htmltopdf.service.FileService;
-import com.pcitc.htmltopdf.util.pdf.HtmlToPDF;
-import com.pcitc.htmltopdf.util.pdf.StringUtils;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.apache.commons.lang.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -71,7 +66,8 @@ public class FileServiceImpl implements FileService {
         }
         String tempHtmlStr = html2PdfEntity.getHtmlStr();
 
-        return HtmlToPDF.htmlStrToPdf(tempHtmlStr, html2PdfEntity.getOriginal(), html2PdfEntity.getPageSize(), html2PdfEntity.getDirection(), html2PdfEntity.getImgName(), html2PdfEntity.getImgX(), html2PdfEntity.getImgY(), pdfPath, ttfPath);
+//        return HtmlToPDF.htmlStrToPdf(tempHtmlStr, html2PdfEntity.getOriginal(), html2PdfEntity.getPageSize(), html2PdfEntity.getDirection(), html2PdfEntity.getImgName(), html2PdfEntity.getImgX(), html2PdfEntity.getImgY(), pdfPath, ttfPath);
+        return "";
 
     }
 

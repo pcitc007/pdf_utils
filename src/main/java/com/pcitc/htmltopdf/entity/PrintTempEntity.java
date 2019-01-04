@@ -1,9 +1,6 @@
 package com.pcitc.htmltopdf.entity;
 
 import java.io.Serializable;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
 
 public class PrintTempEntity implements Serializable {
 

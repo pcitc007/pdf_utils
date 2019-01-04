@@ -2,13 +2,9 @@ package com.pcitc.htmltopdf.util.print;
 
 import com.alibaba.fastjson.JSON;
 import com.pcitc.htmltopdf.entity.ImageEntity;
-import com.pcitc.htmltopdf.entity.PrintTempEntity;
-import org.springframework.jdbc.core.RowMapper;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.*;
 
 
@@ -117,11 +113,6 @@ public class ReflectUtil {
 			Object value = jdbcMapResult.get(key);
 			//确保value有效性，防止JSON reflect时异常
 			if (value != null) {
-				System.out.println(field.getType());
-				System.out.println(List.class);
-				System.out.println(value.getClass());
-				System.out.println(String[].class);
-				
 				if(value.getClass().equals(field.getType())) {
 					conCurrent.put(field.getName(), value);
 				} else {

@@ -1,16 +1,14 @@
 package com.pcitc.htmltopdf.util.print;
 
+import com.pcitc.htmltopdf.dto.PrintTempDto;
+import com.pcitc.htmltopdf.entity.PrintTempEntity;
+import org.apache.commons.lang.StringUtils;
+import org.springframework.jdbc.core.RowMapper;
+
+import javax.servlet.http.HttpServletRequest;
 import java.sql.Clob;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-
-import javax.servlet.http.HttpServletRequest;
-
-import com.pcitc.htmltopdf.dto.PrintTempDto;
-import com.pcitc.htmltopdf.entity.PrintTempEntity;
-import com.pcitc.htmltopdf.util.pdf.StringUtils;
-
-import org.springframework.jdbc.core.RowMapper;
 
 public class PrintUtils {
 

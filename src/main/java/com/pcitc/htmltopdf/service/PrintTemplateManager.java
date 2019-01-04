@@ -3,11 +3,10 @@ package com.pcitc.htmltopdf.service;
 import com.pcitc.htmltopdf.dto.PrintTempDto;
 import com.pcitc.htmltopdf.entity.ImageEntity;
 import com.pcitc.htmltopdf.entity.PrintTempEntity;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
-
-import org.springframework.web.multipart.MultipartFile;
 
 public interface PrintTemplateManager {
 
@@ -44,7 +43,7 @@ public interface PrintTemplateManager {
 	/**
 	 * delSQL 保存和修改
 	 */
-  String save(PrintTempEntity printTempEntity);
+	String save(PrintTempEntity printTempEntity);
 
 	/**
 	 * 删除sql
@@ -52,12 +51,12 @@ public interface PrintTemplateManager {
 	 * @return
 	 */
 	int delSQL(String id);
-	
+
 	/**
 	 * 文件上传
 	 * @author baitao
 	 * @date 2018-12-28
-	 * 
+	 *
 	 * @param file
 	 * @param rootPath
 	 * @return

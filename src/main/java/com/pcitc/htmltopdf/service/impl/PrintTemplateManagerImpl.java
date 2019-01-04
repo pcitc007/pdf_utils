@@ -1,12 +1,14 @@
 package com.pcitc.htmltopdf.service.impl;
 
-import com.itextpdf.text.pdf.PdfStructTreeController.returnType;
 import com.pcitc.htmltopdf.dto.PrintTempDto;
 import com.pcitc.htmltopdf.entity.ImageEntity;
 import com.pcitc.htmltopdf.entity.PrintTempEntity;
 import com.pcitc.htmltopdf.service.PrintTemplateManager;
-import com.pcitc.htmltopdf.util.pdf.StringUtils;
-import com.pcitc.htmltopdf.util.print.*;
+import com.pcitc.htmltopdf.util.print.DateUtil;
+import com.pcitc.htmltopdf.util.print.FormatUtil;
+import com.pcitc.htmltopdf.util.print.MoneyToUppercase;
+import com.pcitc.htmltopdf.util.print.ReflectUtil;
+import org.apache.commons.lang.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -15,9 +17,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.web.multipart.MultipartFile;
-
-import javax.management.RuntimeErrorException;
-import javax.sql.DataSource;
 
 import java.io.File;
 import java.math.BigDecimal;

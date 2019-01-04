@@ -4,8 +4,6 @@ import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.*;
 import com.pcitc.htmltopdf.entity.ImageEntity;
 import com.pcitc.htmltopdf.entity.PrintTempEntity;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -63,7 +61,7 @@ public class PDFBuilder extends PdfPageEventHelper {
 	private void addImg(Document document, ImageEntity imageEntity) {
 		try {
 			Image image = Image.getInstance(this.imgPath + File.separator + imageEntity.getPath());
-			//解决拉伸的问题
+			//解决拉伸的问题，如果设置高度，就用设置的高度。
 			if(Float.parseFloat(imageEntity.getWidth()) == 0 || Float.parseFloat(imageEntity.getHeight()) == 0) {
 				float scalePercentage = 24.0F;
 				image.scalePercent(scalePercentage, scalePercentage);

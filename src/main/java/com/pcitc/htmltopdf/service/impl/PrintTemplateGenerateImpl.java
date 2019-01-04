@@ -1,30 +1,20 @@
 package com.pcitc.htmltopdf.service.impl;
 
-import com.itextpdf.text.pdf.PdfStructTreeController.returnType;
 import com.pcitc.htmltopdf.entity.ImageEntity;
+import com.pcitc.htmltopdf.entity.LookupJsonModel;
 import com.pcitc.htmltopdf.entity.PrintTempEntity;
 import com.pcitc.htmltopdf.service.PrintTemplateGenerate;
-import com.pcitc.htmltopdf.util.pdf.StringUtils;
-import com.pcitc.htmltopdf.util.print.DateUtil;
-import com.pcitc.htmltopdf.util.print.FormatUtil;
-import com.pcitc.htmltopdf.util.print.MoneyToUppercase;
-import com.pcitc.htmltopdf.util.print.ReflectUtil;
+import com.pcitc.htmltopdf.util.print.*;
+import org.apache.commons.lang.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.stereotype.Service;
 
-import javax.sql.DataSource;
-import java.awt.*;
 import java.math.BigDecimal;
 import java.util.*;
-import java.util.List;
 
 public class PrintTemplateGenerateImpl implements PrintTemplateGenerate {
 
@@ -86,6 +76,7 @@ public class PrintTemplateGenerateImpl implements PrintTemplateGenerate {
 				throw new RuntimeException("业务ID为必填项");
 			}
 			String businessId = paramMap.get("businessId").toString();
+			LookupJsonModel lookupJsonModel = (LookupJsonModel) paramMap.get("lookModel");
 
 			//通过关联表，查找模板id
 			String getTempIdSql = String.format("select TEMP_ID from PRINT_TEMP_BUSINESS where BUSINESS_ID = '%s' ", businessId);
@@ -99,6 +90,35 @@ public class PrintTemplateGenerateImpl implements PrintTemplateGenerate {
 			//设置jsoup document, 解决生成的html 空标签不闭合的问题
 			Document document = Jsoup.parse(tableHtml);
 			document.outputSettings(new Document.OutputSettings().syntax(Document.OutputSettings.Syntax.xml));
+			//子模版取消，但是需要thead，tbody，tfoot。所以这里通过有无id，进行分类。
+			Elements tbodyTrs = document.select("table#tbody > tbody > tr");
+			boolean flag = false; //是否出现过id
+			StringBuilder thead = new StringBuilder();
+			StringBuilder tbody = new StringBuilder();
+			StringBuilder tfoot = new StringBuilder();
+			for(int i = 0; i < tbodyTrs.size(); i++) {
+				//没有id
+				String tempId = tbodyTrs.get(i).attr("id");
+				String outerHtml = tbodyTrs.get(i).outerHtml();
+				document.select("table#tbody > tbody > tr").get(i).remove();
+				System.out.println(tempId);
+				//如果出现过id，全部放到tfoot
+				if(flag) {
+					tfoot.append(outerHtml);
+				} else {
+					//如果id空，放到thead
+					if(StringUtils.isBlank(tempId)) {
+						thead.append(outerHtml);
+						//id不空，放到tbody，且flag为true
+					} else {
+						flag = true;
+						tbody.append(outerHtml);
+					}
+				}
+			}
+			document.select("table#tbody > tbody").before("<thead>" + thead.toString() + "</thead>");
+			document.select("table#tbody > tbody").after("<tfoot>" + tfoot.toString() + "</tfoot>");
+			document.select("table#tbody > tbody").html(tbody.toString());
 
 			/* print data
 			 * 1.跨行 结息模板的处理，先判断list，通过list的id获取，获取 tr#id 元素，进行遍历替换，计算跨行的情况。
@@ -115,6 +135,7 @@ public class PrintTemplateGenerateImpl implements PrintTemplateGenerate {
 				for (Map<String, Object> map : printTempSqls) {
 					String tempId = map.get("ID").toString();
 					String tempSql = map.get("CONTENT").toString();
+					tempSql = tempSql +  SqlBuilder.buildSql(lookupJsonModel);
 					String resultDataType = map.get("RESULT_DATA_TYPE").toString();
 					if(RESULTDATATYPE_TYPE_2.equals(resultDataType) || document.select("tr#" + tempId).size() > 0) continue;
 					List<Map<String, Object>> tempList = namedParameterJdbcTemplate.queryForList(tempSql, paramMap);
@@ -139,6 +160,7 @@ public class PrintTemplateGenerateImpl implements PrintTemplateGenerate {
 					Map<String, Object> map = printTempSqls.get(i);
 					String tempId = map.get("ID").toString();
 					String tempSql = map.get("CONTENT").toString();
+					tempSql = tempSql +  SqlBuilder.buildSql(lookupJsonModel);
 					String resultDataTypes = map.get("RESULT_DATA_TYPE").toString();
 					if(!RESULTDATATYPE_TYPE_2.equals(resultDataTypes)) continue;
 					Element tr = document.select("tr#" + tempId).first();
@@ -165,13 +187,6 @@ public class PrintTemplateGenerateImpl implements PrintTemplateGenerate {
 						map1 = this.getFormatDataForMap(map1, dataMap, printTempDatafields);
 						tempHtmlBuilder.append(this.getTableHtmlDataMap(map1, tr.outerHtml()));
 					}
-					//追加空白行
-//					if(tempList.size() < 3) {
-//						tr.select("td").html(" ");
-//						for(int k = 0; k < 3 - tempList.size(); k++) {
-//							tempHtmlBuilder.append(tr.outerHtml());
-//						}
-//					}
 					element.append(tempHtmlBuilder.toString());
 					//删除多余的td
 					for(int k = 0; k < element.select("tr").size(); k++) {
@@ -179,10 +194,10 @@ public class PrintTemplateGenerateImpl implements PrintTemplateGenerate {
 						Elements elements = element.select("tr");
 						elements.get(k).removeAttr("id");
 						elements.get(k).select("td.delete").remove();
-						
 					}
 					element.select("td.delete").attr("rowspan", tempList.size() + blankLineRowSpan + "");
 					document.select("tr#" + tempId).after(element.select("tr").outerHtml()).remove();
+					element.select("tr").remove();
 				}
 			}
 			//删除多余的p，br等会占行的元素
@@ -230,202 +245,202 @@ public class PrintTemplateGenerateImpl implements PrintTemplateGenerate {
 	}
 
 	/* 列表(不含子模板) 取打印数据 */
-	private String getTempListTypeHtml(String tableHtml,
-	                                   List<Map<String, Object>> tableDataList) {
-
-		Document html=Jsoup.parse(tableHtml);
-		Element trModel = html.select("tr").last();
-
-		StringBuffer trs = new StringBuffer();
-		for (Map<String, Object> map : tableDataList) {
-			String newtrStr = trModel.toString();
-			for (String key : map.keySet()) {
-				if(newtrStr.indexOf(key) < 0){
-					continue;
-				}
-				String paramName = "@"+key.toUpperCase()+"@";
-				String value = map.get(key).toString();
-
-				newtrStr = newtrStr.replace(paramName, value);//单列
-			}
-			trs.append(newtrStr);// 一行
-		}
-//		System.out.println("trs="+trs.toString());
-		return trs.toString();
-	}
+//	private String getTempListTypeHtml(String tableHtml,
+//	                                   List<Map<String, Object>> tableDataList) {
+//
+//		Document html=Jsoup.parse(tableHtml);
+//		Element trModel = html.select("tr").last();
+//
+//		StringBuffer trs = new StringBuffer();
+//		for (Map<String, Object> map : tableDataList) {
+//			String newtrStr = trModel.toString();
+//			for (String key : map.keySet()) {
+//				if(newtrStr.indexOf(key) < 0){
+//					continue;
+//				}
+//				String paramName = "@"+key.toUpperCase()+"@";
+//				String value = map.get(key).toString();
+//
+//				newtrStr = newtrStr.replace(paramName, value);//单列
+//			}
+//			trs.append(newtrStr);// 一行
+//		}
+////		System.out.println("trs="+trs.toString());
+//		return trs.toString();
+//	}
 
 
 	/* 完整的字模板的数据 */
-	private List<String> getTotalSubPrintTempPrintDataByCurrentTempId(
-					String tableHtml, String containSubTempIds, Map<String, Object> paramMap) {
-		List<String> html = new ArrayList<String>();
-		if(StringUtils.isBlank(containSubTempIds)){
-			html.add(tableHtml);
-			return html;
-		}
-
-		Document parseHtml = Jsoup.parse(tableHtml);
-		Document tempHtml = Jsoup.parse(tableHtml);
-		//头部
-		if(parseHtml.select("#thead").size() > 0) {
-			String theadTbodyHtml = tempHtml.select("#thead tbody").html();
-			tempHtml.select("#thead").after("<table id=\"tbody\"><thead>"+ theadTbodyHtml +"</thead><tbody></tbody></table>");
-			tempHtml.select("#thead").remove();
-		}
-		if(parseHtml.select("#tfoot").size() > 0) {
-			String tfootTbodyHtml = tempHtml.select("#tfoot tbody").html();
-			tempHtml.select("#tbody").append("<tfoot>" + tfootTbodyHtml + "</tfoot>");
-			tempHtml.select("#tfoot").remove();
-		}
-
-		Map<String, Object > headerDataMap = paramMap;
-		List<Map<String, Object>> tableDataList = null;
-
-		for (String printTempId : containSubTempIds.split("_")) {
-			if(printTempId.startsWith("#")){
-				printTempId = printTempId.substring(1);
-			}
-			if(printTempId.endsWith("#")){
-				printTempId = printTempId.substring(0, printTempId.length()-1);
-			}
-
-
-			String printSqlCount = "select count(*) from PRINT_TEMP where ID like '" + printTempId + "' ";
-			int i = jdbcTemplate.queryForObject(printSqlCount, Integer.class);
-			if(i < 1){
-				continue;
-			}
-
-			// base info
-			String printSql = "select * from PRINT_TEMP where ID like '" + printTempId + "' ";
-			Map<String, Object> printTempMap = jdbcTemplate.queryForMap(printSql);
-			if (printTempMap == null || printTempMap.get("content") == null) {
-				return null;
-			}
-
-			headerDataMap = paramMap;
-			tableDataList = new ArrayList<Map<String,Object>>();
-
-
-			// print data
-			String printTempSql = " select * from PRINT_TEMP_SQL where PRINT_TEMP_ID = '" + printTempId + "' ";
-			List<Map<String, Object>> printTempSqls = jdbcTemplate.queryForList(printTempSql);
-			if (printTempSqls != null && !printTempSqls.isEmpty()) {
-				for (Map<String, Object> map : printTempSqls) {
-					String tempSql = map.get("CONTENT").toString();
-					String resultDataTypes = map.get("RESULT_DATA_TYPE").toString();
-
-					List<Map<String, Object>> tempList = namedParameterJdbcTemplate.queryForList(tempSql, paramMap);
-					if (tempList == null || tempList.isEmpty()) {
-						continue;
-					}
-
-					// sql结果集
-					if(resultDataTypes.equals(RESULTDATATYPE_TYPE_1)){
-						// Map
-						headerDataMap.putAll(tempList.get(0));
-					}else{
-						// List
-						tableDataList.addAll(tempList);
-					}
-				}
-			}
-
-			// format
-			String printTempDatafield = " select * from PRINT_TEMP_DATATYPE where PRINT_TEMP_ID = '" + printTempId + "' ";
-			List<Map<String, Object>> printTempDatafields = jdbcTemplate.queryForList(printTempDatafield);
-			headerDataMap = this.getFormatDataForMap(headerDataMap, paramMap, printTempDatafields);
-			tableDataList = this.getFormatDataForList(printTempId, tableDataList, paramMap, printTempDatafields);
-
-			// print html
-			String subTableHtml = printTempMap.get("CONTENT").toString();
-			if(headerDataMap != null){
-				subTableHtml = this.getTableHtmlDataMap(headerDataMap, subTableHtml);
-			}
-			subTableHtml = this.getTempListTypeHtml(subTableHtml, tableDataList);
-
-			tempHtml.select("#tbody tbody").append(subTableHtml);
-//			tableHtml = tableHtml.replace("#"+printTempId+"#", subTableHtml);
-//			System.out.println(tableHtml.toString());
-
-			html.add(tempHtml.toString());
-		}
-		return html;
-	}
+//	private List<String> getTotalSubPrintTempPrintDataByCurrentTempId(
+//					String tableHtml, String containSubTempIds, Map<String, Object> paramMap) {
+//		List<String> html = new ArrayList<String>();
+//		if(StringUtils.isBlank(containSubTempIds)){
+//			html.add(tableHtml);
+//			return html;
+//		}
+//
+//		Document parseHtml = Jsoup.parse(tableHtml);
+//		Document tempHtml = Jsoup.parse(tableHtml);
+//		//头部
+//		if(parseHtml.select("#thead").size() > 0) {
+//			String theadTbodyHtml = tempHtml.select("#thead tbody").html();
+//			tempHtml.select("#thead").after("<table id=\"tbody\"><thead>"+ theadTbodyHtml +"</thead><tbody></tbody></table>");
+//			tempHtml.select("#thead").remove();
+//		}
+//		if(parseHtml.select("#tfoot").size() > 0) {
+//			String tfootTbodyHtml = tempHtml.select("#tfoot tbody").html();
+//			tempHtml.select("#tbody").append("<tfoot>" + tfootTbodyHtml + "</tfoot>");
+//			tempHtml.select("#tfoot").remove();
+//		}
+//
+//		Map<String, Object > headerDataMap = paramMap;
+//		List<Map<String, Object>> tableDataList = null;
+//
+//		for (String printTempId : containSubTempIds.split("_")) {
+//			if(printTempId.startsWith("#")){
+//				printTempId = printTempId.substring(1);
+//			}
+//			if(printTempId.endsWith("#")){
+//				printTempId = printTempId.substring(0, printTempId.length()-1);
+//			}
+//
+//
+//			String printSqlCount = "select count(*) from PRINT_TEMP where ID like '" + printTempId + "' ";
+//			int i = jdbcTemplate.queryForObject(printSqlCount, Integer.class);
+//			if(i < 1){
+//				continue;
+//			}
+//
+//			// base info
+//			String printSql = "select * from PRINT_TEMP where ID like '" + printTempId + "' ";
+//			Map<String, Object> printTempMap = jdbcTemplate.queryForMap(printSql);
+//			if (printTempMap == null || printTempMap.get("content") == null) {
+//				return null;
+//			}
+//
+//			headerDataMap = paramMap;
+//			tableDataList = new ArrayList<Map<String,Object>>();
+//
+//
+//			// print data
+//			String printTempSql = " select * from PRINT_TEMP_SQL where PRINT_TEMP_ID = '" + printTempId + "' ";
+//			List<Map<String, Object>> printTempSqls = jdbcTemplate.queryForList(printTempSql);
+//			if (printTempSqls != null && !printTempSqls.isEmpty()) {
+//				for (Map<String, Object> map : printTempSqls) {
+//					String tempSql = map.get("CONTENT").toString();
+//					String resultDataTypes = map.get("RESULT_DATA_TYPE").toString();
+//
+//					List<Map<String, Object>> tempList = namedParameterJdbcTemplate.queryForList(tempSql, paramMap);
+//					if (tempList == null || tempList.isEmpty()) {
+//						continue;
+//					}
+//
+//					// sql结果集
+//					if(resultDataTypes.equals(RESULTDATATYPE_TYPE_1)){
+//						// Map
+//						headerDataMap.putAll(tempList.get(0));
+//					}else{
+//						// List
+//						tableDataList.addAll(tempList);
+//					}
+//				}
+//			}
+//
+//			// format
+//			String printTempDatafield = " select * from PRINT_TEMP_DATATYPE where PRINT_TEMP_ID = '" + printTempId + "' ";
+//			List<Map<String, Object>> printTempDatafields = jdbcTemplate.queryForList(printTempDatafield);
+//			headerDataMap = this.getFormatDataForMap(headerDataMap, paramMap, printTempDatafields);
+//			tableDataList = this.getFormatDataForList(printTempId, tableDataList, paramMap, printTempDatafields);
+//
+//			// print html
+//			String subTableHtml = printTempMap.get("CONTENT").toString();
+//			if(headerDataMap != null){
+//				subTableHtml = this.getTableHtmlDataMap(headerDataMap, subTableHtml);
+//			}
+//			subTableHtml = this.getTempListTypeHtml(subTableHtml, tableDataList);
+//
+//			tempHtml.select("#tbody tbody").append(subTableHtml);
+////			tableHtml = tableHtml.replace("#"+printTempId+"#", subTableHtml);
+////			System.out.println(tableHtml.toString());
+//
+//			html.add(tempHtml.toString());
+//		}
+//		return html;
+//	}
 
 
 	/* 列表数据格式化 */
 	@SuppressWarnings("unchecked")
-	private List<Map<String, Object>> getFormatDataForList(String printTempId,
-	                                                       List<Map<String, Object>> tableDataList,
-	                                                       Map<String, Object> paramMap, List<Map<String, Object>> printTempDatafields) {
-		// 0.数据列表
-		if(tableDataList == null || tableDataList.isEmpty()
-						|| printTempDatafields==null || printTempDatafields.isEmpty()){
-			return tableDataList;
-		}
-
-		// 1.指定格式化字段名列表
-		// printTempDatafields --> Map<String, Object>
-		if(printTempDatafields == null|| printTempDatafields.isEmpty()){
-			return tableDataList;
-		}
-
-		// 2.指定格式化字段名列表   ==>  Map
-		// field:Map
-		Map<String, Object> printTempDatafieldMap = new HashMap<String, Object>();
-		for (Map<String, Object> map : printTempDatafields) {
-			// 将字段名作为KEY 值
-			String fieldName = map.get("FIELD_NAME").toString();
-			printTempDatafieldMap.put(fieldName, map);
-		}
-
-		// 3.列表指定列 数据格式化(1.文字替换 需要显示的数据值来自另一张表,2.指定数据 按照指定格式显示)
-		/*
-		 * for
-		 * 	 map key:vlaue key:vlaue
-		 */
-		for (Map<String, Object> map : tableDataList) {
-			for (String key : map.keySet()) {
-				// 1.格式化字段
-				Object o = printTempDatafieldMap.get(key);
-				if(o == null){
-					continue;
-				}
-				Map<String, Object> t = (Map<String, Object>)o;
-				if (t.get("FIELD_NAME") == null
-								|| StringUtils.isBlank(t.get("FIELD_NAME").toString().replaceAll(" ", ""))) {
-					continue;
-				}
-
-				// 2.格式化
-				// 2.1 文字替换    TODO 当前sql参数值，有可能是当前字段的值;例:状态值  需要转换成文字方便阅读 ，其值 来自于另一张表
-				if (t.get("FIELD_SOURCE") != null) {
-					String fieldSource = t.get("FIELD_SOURCE").toString();
-					List<Map<String, Object>> tempList = namedParameterJdbcTemplate.queryForList(fieldSource, paramMap);
-					if (tempList == null || tempList.isEmpty()) {
-						continue;
-					}
-					map.put(key, tempList.get(0).get(key));
-					continue;
-				}
-
-				// 2.2 数据替换
-				if (t.get("FIELD_TYPE") == null) {
-					continue;
-				}
-				String fieldName = t.get("FIELD_NAME").toString().toUpperCase();
-				if (map.get(fieldName) == null || StringUtils.isBlank(fieldName.replaceAll(" ", ""))) {
-					continue;
-				}
-				Object fieldType = t.get("FIELD_TYPE");
-				String formatData = this.getFormatData(map, fieldType, fieldName);
-				map.put(key, formatData);
-			}
-		}
-
-		return tableDataList;
-	}
+//	private List<Map<String, Object>> getFormatDataForList(String printTempId,
+//	                                                       List<Map<String, Object>> tableDataList,
+//	                                                       Map<String, Object> paramMap, List<Map<String, Object>> printTempDatafields) {
+//		// 0.数据列表
+//		if(tableDataList == null || tableDataList.isEmpty()
+//						|| printTempDatafields==null || printTempDatafields.isEmpty()){
+//			return tableDataList;
+//		}
+//
+//		// 1.指定格式化字段名列表
+//		// printTempDatafields --> Map<String, Object>
+//		if(printTempDatafields == null|| printTempDatafields.isEmpty()){
+//			return tableDataList;
+//		}
+//
+//		// 2.指定格式化字段名列表   ==>  Map
+//		// field:Map
+//		Map<String, Object> printTempDatafieldMap = new HashMap<String, Object>();
+//		for (Map<String, Object> map : printTempDatafields) {
+//			// 将字段名作为KEY 值
+//			String fieldName = map.get("FIELD_NAME").toString();
+//			printTempDatafieldMap.put(fieldName, map);
+//		}
+//
+//		// 3.列表指定列 数据格式化(1.文字替换 需要显示的数据值来自另一张表,2.指定数据 按照指定格式显示)
+//		/*
+//		 * for
+//		 * 	 map key:vlaue key:vlaue
+//		 */
+//		for (Map<String, Object> map : tableDataList) {
+//			for (String key : map.keySet()) {
+//				// 1.格式化字段
+//				Object o = printTempDatafieldMap.get(key);
+//				if(o == null){
+//					continue;
+//				}
+//				Map<String, Object> t = (Map<String, Object>)o;
+//				if (t.get("FIELD_NAME") == null
+//								|| StringUtils.isBlank(t.get("FIELD_NAME").toString().replaceAll(" ", ""))) {
+//					continue;
+//				}
+//
+//				// 2.格式化
+//				// 2.1 文字替换    TODO 当前sql参数值，有可能是当前字段的值;例:状态值  需要转换成文字方便阅读 ，其值 来自于另一张表
+//				if (t.get("FIELD_SOURCE") != null) {
+//					String fieldSource = t.get("FIELD_SOURCE").toString();
+//					List<Map<String, Object>> tempList = namedParameterJdbcTemplate.queryForList(fieldSource, paramMap);
+//					if (tempList == null || tempList.isEmpty()) {
+//						continue;
+//					}
+//					map.put(key, tempList.get(0).get(key));
+//					continue;
+//				}
+//
+//				// 2.2 数据替换
+//				if (t.get("FIELD_TYPE") == null) {
+//					continue;
+//				}
+//				String fieldName = t.get("FIELD_NAME").toString().toUpperCase();
+//				if (map.get(fieldName) == null || StringUtils.isBlank(fieldName.replaceAll(" ", ""))) {
+//					continue;
+//				}
+//				Object fieldType = t.get("FIELD_TYPE");
+//				String formatData = this.getFormatData(map, fieldType, fieldName);
+//				map.put(key, formatData);
+//			}
+//		}
+//
+//		return tableDataList;
+//	}
 
 
 	/* 模板  Map数据格式化 */
