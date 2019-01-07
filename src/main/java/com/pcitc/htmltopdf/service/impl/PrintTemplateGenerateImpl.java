@@ -42,6 +42,8 @@ public class PrintTemplateGenerateImpl implements PrintTemplateGenerate {
 	// 日期(2018年01月01日)
 	private static final String field_type_5 = "5";
 
+	private static final String sql_replace_symbol = "@";
+
 	@Override
 	public Map<String, List<PrintTempEntity>> getMorePrintData(List<Map<String, Object>> paramMap) {
 		Map<String, List<PrintTempEntity>> resultMap = new HashMap<String, List<PrintTempEntity>>();
@@ -75,6 +77,13 @@ public class PrintTemplateGenerateImpl implements PrintTemplateGenerate {
 			if(paramMap.get("businessId") == null){
 				throw new RuntimeException("业务ID为必填项");
 			}
+			Map<String, String> sqlRepalceMap = new HashMap<String, String>();
+			if(paramMap.get("sqlReplaceMap") != null) {
+				sqlRepalceMap = (Map<String, String>) paramMap.get("sqlReplaceMap");
+			}
+			
+			
+			
 			String businessId = paramMap.get("businessId").toString();
 			LookupJsonModel lookupJsonModel = (LookupJsonModel) paramMap.get("lookModel");
 
@@ -100,7 +109,7 @@ public class PrintTemplateGenerateImpl implements PrintTemplateGenerate {
 				//没有id
 				String tempId = tbodyTrs.get(i).attr("id");
 				String outerHtml = tbodyTrs.get(i).outerHtml();
-				document.select("table#tbody > tbody > tr").get(i).remove();
+//				document.select("table#tbody > tbody > tr").get(i).remove();
 				System.out.println(tempId);
 				//如果出现过id，全部放到tfoot
 				if(flag) {
@@ -135,7 +144,12 @@ public class PrintTemplateGenerateImpl implements PrintTemplateGenerate {
 				for (Map<String, Object> map : printTempSqls) {
 					String tempId = map.get("ID").toString();
 					String tempSql = map.get("CONTENT").toString();
-					tempSql = tempSql +  SqlBuilder.buildSql(lookupJsonModel);
+					for (Map.Entry<String, String> entry : sqlRepalceMap.entrySet()) {
+						tempSql = tempSql.replace(sql_replace_symbol + entry.getKey() + sql_replace_symbol, entry.getValue());
+					}
+					System.out.println("===================================================================================");
+					System.err.println(tempSql);
+					System.out.println("===================================================================================");
 					String resultDataType = map.get("RESULT_DATA_TYPE").toString();
 					if(RESULTDATATYPE_TYPE_2.equals(resultDataType) || document.select("tr#" + tempId).size() > 0) continue;
 					List<Map<String, Object>> tempList = namedParameterJdbcTemplate.queryForList(tempSql, paramMap);
@@ -160,7 +174,9 @@ public class PrintTemplateGenerateImpl implements PrintTemplateGenerate {
 					Map<String, Object> map = printTempSqls.get(i);
 					String tempId = map.get("ID").toString();
 					String tempSql = map.get("CONTENT").toString();
-					tempSql = tempSql +  SqlBuilder.buildSql(lookupJsonModel);
+					for (Map.Entry<String, String> entry : sqlRepalceMap.entrySet()) {
+						tempSql = tempSql.replace(sql_replace_symbol + entry.getKey() + sql_replace_symbol, entry.getValue());
+					}
 					String resultDataTypes = map.get("RESULT_DATA_TYPE").toString();
 					if(!RESULTDATATYPE_TYPE_2.equals(resultDataTypes)) continue;
 					Element tr = document.select("tr#" + tempId).first();
