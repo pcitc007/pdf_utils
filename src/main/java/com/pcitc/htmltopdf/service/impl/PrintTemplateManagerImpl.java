@@ -100,11 +100,11 @@ public class PrintTemplateManagerImpl implements PrintTemplateManager {
 		dto.setPerPage(10);
 		StringBuilder sql = new StringBuilder("select * from PRINT_TEMP where 1=1 ");
 		if (StringUtils.isNotBlank(id)) {
-			sql.append(" and ID like '%").append(id).append("%' ");
-			sql.append(" and ID like '%").append(id.toUpperCase()).append("%' ");
+			sql.append(" and REGEXP_LIKE(ID, '(" + id + "|" + id.toUpperCase() +")')");
 		}
 		if (StringUtils.isNotBlank(name)) {
-			sql.append(" and NAME like '%").append(name).append("%' ");
+			sql.append(" and REGEXP_LIKE(NAME, '(" + name + "|" + name.toUpperCase() +")')");
+//			sql.append(" and NAME like '%").append(name).append("%' ");
 		}
 		dto.setOrderBy(" create_time desc ");
 

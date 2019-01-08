@@ -147,9 +147,6 @@ public class PrintTemplateGenerateImpl implements PrintTemplateGenerate {
 					for (Map.Entry<String, String> entry : sqlRepalceMap.entrySet()) {
 						tempSql = tempSql.replace(sql_replace_symbol + entry.getKey() + sql_replace_symbol, entry.getValue());
 					}
-					System.out.println("===================================================================================");
-					System.err.println(tempSql);
-					System.out.println("===================================================================================");
 					String resultDataType = map.get("RESULT_DATA_TYPE").toString();
 					if(RESULTDATATYPE_TYPE_2.equals(resultDataType) || document.select("tr#" + tempId).size() > 0) continue;
 					List<Map<String, Object>> tempList = namedParameterJdbcTemplate.queryForList(tempSql, paramMap);
